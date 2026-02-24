@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between mb-3">
+    <h3>All Books</h3>
+    <a href="{% url 'books:book_add' %}" class="btn btn-primary">
+        + Add Book
+    </a>
+</div>
+
+<form method="GET" class="mb-3">
+    <div class="input-group">
+        <input 
+            type="text" 
+            name="q" 
+            id="searchInput"
+            class="form-control" 
+            placeholder="Search by title, author, ISBN..."
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>ISBN</th>
+            <th>Published</th>
+            <th>Quantity</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for book in books %}
+        <tr>
+            <td>{{ book.title }}</td>
+            <td>{{ book.author }}</td>
+            <td>{{ book.isbn }}</td>
+            <td>{{ book.published_date }}</td>
+            <td>{{ book.quantity }}</td>
+            <td>
+                <a href="{% url 'books:book_edit' book.pk %}"
+                   class="btn btn-warning btn-sm">Edit</a>
+
+                <a href="{% url 'books:book_delete' book.pk %}"
+                   class="btn btn-danger btn-sm">Delete</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center text-danger">
+                No books found.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script id="h3x9kf">
+    window.addEventListener('load', function () {
+
+        const url = new URL(window.location);
+
+        // If search query exists
+        if (url.searchParams.has('q')) {
+
+            // Clear the input field
+            document.getElementById('searchInput').value = '';
+
+            // Remove query param from URL without reloading
+            url.searchParams.delete('q');
+            window.history.replaceState({}, document.title, url.pathname);
+        }
+    });
+</script>
+{% endblock %}

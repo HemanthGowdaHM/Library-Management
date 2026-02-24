@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h2 class="text-danger">Invalid URL</h2>
+    <p>The page you entered does not exist.</p>
+    <a href="{% url 'books:book_list' %}" class="btn btn-primary">Go to Home</a>
+</div>
+{% endblock %}

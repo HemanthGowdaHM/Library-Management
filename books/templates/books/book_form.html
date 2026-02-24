@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h3>
+    {% if object %}
+        Update Book
+    {% else %}
+        Add New Book
+    {% endif %}
+</h3>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="card p-3 shadow-sm">
+        {{ form.as_p }}
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-success">
+                Save
+            </button>
+            <a href="{% url 'books:book_list' %}"
+               class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
