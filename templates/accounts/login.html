@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block extra_head %}
+<style>
+  body { background: #0d0d0d; }
+
+  .login-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* ── LEFT — same as register ── */
+  .login-left {
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 50%, var(--navy-deep) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-left::before {
+    content: '';
+    position: absolute;
+    top: -100px; left: -100px;
+    width: 420px; height: 420px;
+    background: radial-gradient(circle, rgba(229,160,50,0.15) 0%, transparent 65%);
+    border-radius: 50%;
+  }
+
+  .login-left::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; right: -80px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(229,160,50,0.1) 0%, transparent 65%);
+    border-radius: 50%;
+  }
+
+  .left-content { position: relative; z-index: 1; }
+
+  .left-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px; font-weight: 700;
+    color: #fff; line-height: 1.1; margin-bottom: 14px;
+  }
+  .left-logo span { color: var(--gold); }
+
+  .left-tagline {
+    color: rgba(255,255,255,0.45);
+    font-size: 13px; letter-spacing: 2.5px;
+    text-transform: uppercase; margin-bottom: 44px;
+  }
+
+  .left-quote {
+    border-left: 2px solid var(--gold);
+    padding-left: 20px; margin-bottom: 44px;
+  }
+  .left-quote p {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; color: rgba(255,255,255,0.75);
+    font-style: italic; line-height: 1.6; margin-bottom: 8px;
+  }
+  .left-quote cite { font-size: 12px; color: rgba(255,255,255,0.35); }
+
+  .left-perks { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  .left-perks li { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.65); font-size: 14px; }
+  .perk-dot { width: 7px; height: 7px; background: var(--gold); border-radius: 50%; flex-shrink: 0; }
+
+  /* ── RIGHT ── */
+  .login-right {
+    background: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    padding: 48px 40px;
+  }
+
+  .login-form-wrap { width: 100%; max-width: 400px; }
+
+  .form-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px; font-weight: 700;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  .form-subheading { color: var(--ink3); font-size: 14px; margin-bottom: 30px; }
+
+  .pw-wrap { position: relative; }
+  .pw-toggle {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--ink3); font-size: 15px; padding: 2px;
+    transition: color 0.15s;
+  }
+  .pw-toggle:hover { color: var(--gold); }
+
+  .label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .label-row label { margin-bottom: 0; }
+  .forgot-link { font-size: 12px; color: var(--gold); text-decoration: none; font-weight: 500; }
+  .forgot-link:hover { text-decoration: underline; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 22px 0; color: var(--ink3); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .divider::before, .divider::after { content: ''; flex:1; height:1px; background: var(--border); }
+
+  .register-link { text-align: center; font-size: 13px; color: var(--ink3); }
+  .register-link a { color: var(--gold); text-decoration: none; font-weight: 500; }
+  .register-link a:hover { text-decoration: underline; }
+
+  .error-box {
+    background: #fdf0ef; border: 1px solid #f0b8b3; border-radius: 8px;
+    padding: 11px 14px; font-size: 13.5px; color: var(--danger);
+    margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── FORGOT PASSWORD MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(13,13,13,0.65);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: #fff; border-radius: 16px;
+    width: 100%; max-width: 450px;
+    padding: 36px; position: relative;
+    box-shadow: 0 24px 80px rgba(13,13,13,0.35);
+    animation: modalPop 0.25s ease;
+  }
+  @keyframes modalPop {
+    from { opacity:0; transform: scale(0.94) translateY(12px); }
+    to   { opacity:1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--paper); border: none; cursor: pointer;
+    font-size: 17px; color: var(--ink3);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: var(--border); }
+
+  .modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px; font-weight: 700;
+    color: var(--ink); margin-bottom: 6px;
+  }
+  .modal-sub { color: var(--ink3); font-size: 13.5px; margin-bottom: 22px; line-height: 1.55; }
+
+  .recovery-tabs { display: flex; gap: 8px; margin-bottom: 22px; }
+  .rtab {
+    flex: 1; padding: 10px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    background: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; color: var(--ink3);
+    transition: all 0.18s; text-align: center;
+  }
+  .rtab:hover { border-color: var(--gold); color: var(--ink); }
+  .rtab.active { border-color: var(--gold); background: var(--gold-lt); color: var(--gold); }
+
+  .recovery-panel { display: none; }
+  .recovery-panel.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  .modal-notice {
+    background: #e8f4fd; border: 1px solid #9fd0d0;
+    border-radius: 8px; padding: 11px 14px;
+    font-size: 12.5px; color: #2c6e9a;
+    margin-top: 14px; line-height: 1.55;
+  }
+
+  @media(max-width: 768px) {
+    .login-shell { grid-template-columns: 1fr; }
+    .login-left { display: none; }
+    .login-right { padding: 40px 24px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-shell">
+
+  <!-- LEFT -->
+  <div class="login-left">
+    <div class="left-content">
+      <div class="left-logo">📚 <span>College</span><br>Library</div>
+      <div class="left-tagline">Knowledge Hub</div>
+      <div class="left-quote">
+        <p>"The more that you read, the more things you will know."</p>
+        <cite>— Dr. Seuss</cite>
+      </div>
+      <ul class="left-perks">
+        <li><span class="perk-dot"></span>Access thousands of books & journals</li>
+        <li><span class="perk-dot"></span>Track your borrowed books & due dates</li>
+        <li><span class="perk-dot"></span>Reserve books from anywhere on campus</li>
+        <li><span class="perk-dot"></span>Get notified before overdue fines</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="login-right">
+    <div class="login-form-wrap">
+      <h1 class="form-heading">Welcome back</h1>
+      <p class="form-subheading">Sign in to access your library account</p>
+
+      {% if form.non_field_errors %}
+        <div class="error-box">✕ {{ form.non_field_errors.0 }}</div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" name="username" class="form-control"
+            placeholder="your.username"
+            value="{{ form.username.value|default:'' }}" autofocus>
+          {% for e in form.username.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label>Password</label>
+            <a href="#" class="forgot-link" onclick="openForgot(event)">Forgot password?</a>
+          </div>
+          <div class="pw-wrap">
+            <input type="password" name="password" id="loginPw"
+              placeholder="••••••••">
+            <button type="button" class="pw-toggle" onclick="togglePw('loginPw',this)">👁</button>
+          </div>
+          {% for e in form.password.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-gold btn-block btn-lg" style="margin-top:6px;">
+          Sign In &nbsp;→
+        </button>
+      </form>
+
+      <div class="divider">or</div>
+      <div class="register-link">
+        New to the library? <a href="{% url 'accounts:register' %}">Create an account</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FORGOT PASSWORD MODAL ── -->
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeForgot()">×</button>
+    <div class="modal-title">🔑 Recover Account</div>
+    <p class="modal-sub">Choose how you'd like to verify your identity and reset your password.</p>
+
+    <div class="recovery-tabs">
+      <button class="rtab active" onclick="switchTab(this,'phone')">📱 By Phone</button>
+      <button class="rtab" onclick="switchTab(this,'username')">👤 By Username</button>
+    </div>
+
+    <!-- Phone tab -->
+    <div class="recovery-panel active" id="panel-phone">
+      <form method="post" action="{% url 'accounts:forgot_password' %}">
+        {% csrf_token %}
+        <input type="hidden" name="method" value="phone">
+        <div class="form-group">
+          <label>Registered Phone Number</label>
+          <input type="tel" name="phone_number" placeholder="e.g. 9876543210" required>
+        </div>
+        <button type="submit" class="btn btn-gold btn-block">Send Reset SMS</button>
+        <div class="modal-notice">ℹ️ If your phone number is on file, you'll receive an SMS with reset instructions shortly.</div>
+      </form>
+    </div>
+
+    <!-- Username tab -->
+    <div class="recovery-panel" id="panel-username">
+      <form method="post" action="{% url 'accounts:forgot_password' %}">
+        {% csrf_token %}
+        <input type="hidden" name="method" value="username">
+        <div class="form-group">
+          <label>Your Username</label>
+          <input type="text" name="username_recover" placeholder="your.username" required>
+        </div>
+        <div class="form-group">
+          <label>Registered Email</label>
+          <input type="email" name="email" placeholder="you@college.edu" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Send Reset Email</button>
+        <div class="modal-notice">ℹ️ A password reset link will be sent to the email address linked to this username.</div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePw(id, btn) {
+    const el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁' : '🙈';
+  }
+  function openForgot(e) {
+    e.preventDefault();
+    document.getElementById('forgotModal').classList.add('open');
+  }
+  function closeForgot() {
+    document.getElementById('forgotModal').classList.remove('open');
+  }
+  function switchTab(el, panel) {
+    document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.recovery-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + panel).classList.add('active');
+  }
+  document.getElementById('forgotModal').addEventListener('click', function(e) {
+    if (e.target === this) closeForgot();
+  });
+</script>
+{% endblock %}

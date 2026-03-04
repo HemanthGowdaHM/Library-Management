@@ -14,14 +14,24 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
-from books.views import invalid_url_view
+from django.conf import settings
+from django.conf.urls.static import static
+from django.shortcuts import redirect
+
+from django.conf.urls import handler403, handler404, handler500
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('',include('books.urls')),
-    
-    # Catch-all pattern (must be last)
-    path('<path:invalid_path>/', invalid_url_view),
-]
+    path('admin/',      admin.site.urls),
+    path('books/',      include('books.urls')),
+    path('accounts/',   include('accounts.urls', namespace='accounts')),  # ← ADD THIS
+    path('',            lambda request: redirect('accounts:dashboard')),   # ← root redirect
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)        # ← ADD THIS
+
+
+handler403 = 'accounts.views.error_403'
+handler404 = 'accounts.views.error_404'
+handler500 = 'accounts.views.error_500'

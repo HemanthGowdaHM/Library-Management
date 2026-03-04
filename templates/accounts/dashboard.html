@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  .dash-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 60%, var(--navy-deep) 100%);
+    border-radius: var(--radius); padding: 28px 32px; margin-bottom: 28px;
+    position: relative; overflow: hidden;
+  }
+  .dash-hero::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 260px; height: 260px;
+    background: radial-gradient(circle, rgba(229,160,50,0.18) 0%, transparent 65%);
+    border-radius: 50%;
+  }
+  .dash-hero-inner { position: relative; z-index: 1; }
+  .dash-greeting {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 6px;
+  }
+  .dash-greeting span { color: var(--gold); }
+  .dash-meta { color: rgba(255,255,255,0.5); font-size: 13px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .dash-meta .sep { opacity: 0.35; }
+
+  .pending-alert {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(229,160,50,0.2); border: 1px solid rgba(229,160,50,0.35);
+    color: var(--gold); border-radius: 8px; padding: 6px 14px;
+    font-size: 13px; font-weight: 500; text-decoration: none; margin-top: 14px;
+    transition: background 0.18s;
+  }
+  .pending-alert:hover { background: rgba(229,160,50,0.3); }
+
+  .quick-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+
+  /* Activity search bar */
+  .activity-toolbar {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 0; padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--paper);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .activity-search {
+    display: flex; align-items: center; gap: 6px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    background: #fff; padding: 0 12px; flex: 1; min-width: 200px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .activity-search:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(229,160,50,0.1);
+  }
+  .activity-search input {
+    border: none; outline: none; padding: 9px 4px;
+    font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+    color: var(--ink); background: transparent; width: 100%;
+    box-shadow: none !important;
+  }
+  .activity-search .s-icon { color: var(--ink3); font-size: 14px; flex-shrink: 0; }
+
+  .activity-select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink);
+    background: #fff; outline: none; cursor: pointer; transition: border-color 0.2s;
+  }
+  .activity-select:focus { border-color: var(--gold); }
+
+  .result-count { font-size: 12px; color: var(--ink3); margin-left: auto; white-space: nowrap; }
+
+  /* Table rows */
+  .overdue-row td { background: #fdf6f6 !important; }
+  .overdue-row:hover td { background: #fdf0ef !important; }
+
+  .book-title-cell {
+    display: inline-flex; align-items: center; gap: 6px;
+    max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fine-chip {
+    background: #fdf0ef; color: var(--danger);
+    border-radius: 6px; padding: 3px 10px;
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* Student/teacher stats */
+  .overdue-book-row { background: #fdf6f6; }
+  .overdue-book-row:hover td { background: #fdf0ef !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+
+  <!-- HERO -->
+  <div class="dash-hero">
+    <div class="dash-hero-inner">
+      <div class="dash-greeting">Hello, <span>{{ user.get_full_name|default:user.username }}</span> 👋</div>
+      <div class="dash-meta">
+        <span class="badge role-{{ user.role|lower }}" style="border-radius:6px;">{{ user.get_role_display }}</span>
+        <span class="sep">·</span>
+        <span>{{ user.department|default:"College Library" }}</span>
+        <span class="sep">·</span>
+        <span>Joined {{ user.date_joined|date:"M Y" }}</span>
+      </div>
+      {% if pending_users %}
+        <a href="{% url 'accounts:manage_users' %}?approved=pending" class="pending-alert">
+          ⏳ {{ pending_users }} member{{ pending_users|pluralize }} awaiting approval
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if user.can_manage_books %}
+  <!-- ═══ ADMIN / LIBRARIAN ═══ -->
+
+  <div class="stats-grid">
+    <div class="stat-card stat-navy">
+      <div class="stat-num">{{ total_users }}</div>
+      <div class="stat-lbl">Total Members</div>
+      <div class="stat-icon">👥</div>
+    </div>
+    <div class="stat-card stat-gold">
+      <div class="stat-num">{{ active_borrows }}</div>
+      <div class="stat-lbl">Active Borrows</div>
+      <div class="stat-icon">📤</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-num">{{ pending_users }}</div>
+      <div class="stat-lbl">Pending Approval</div>
+      <div class="stat-icon">⏳</div>
+    </div>
+  </div>
+
+  <div class="quick-row">
+    <a href="{% url 'accounts:issue_book' %}" class="btn btn-gold">📤 Issue Book</a>
+    <a href="{% url 'accounts:manage_users' %}" class="btn btn-primary">👥 Members</a>
+    <a href="{% url 'accounts:manage_users' %}?approved=pending" class="btn btn-outline">⏳ Approvals</a>
+    <a href="{% url 'books:book_list' %}" class="btn btn-outline">📚 Catalogue</a>
+    <a href="{% url 'books:document_list' %}" class="btn btn-outline">📄 Documents</a>
+  </div>
+
+  <!-- ACTIVITY TABLE with search -->
+  <div class="section-title">Recent Activity</div>
+  <div class="card" style="padding:0;">
+
+    <!-- Toolbar -->
+    <form method="get" action="" id="activityFilterForm">
+      <div class="activity-toolbar">
+        <div class="activity-search">
+          <span class="s-icon">🔍</span>
+          <input type="text" name="activity_q"
+            placeholder="Search member name, student ID or book…"
+            value="{{ activity_q }}"
+            oninput="debounceSubmit()">
+        </div>
+
+        <select name="activity_status" class="activity-select" onchange="this.form.submit()">
+          <option value="">All Status</option>
+          {% for val, lbl in status_choices %}
+            <option value="{{ val }}" {% if activity_status == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+
+        {% if activity_q or activity_status %}
+          <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline btn-sm">Clear</a>
+        {% endif %}
+
+        <span class="result-count">{{ recent_borrows|length }} record{{ recent_borrows|length|pluralize }}</span>
+      </div>
+    </form>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th><th>Book</th><th>Status</th>
+            <th>Borrowed</th><th>Due Date</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent_borrows %}
+          <tr class="{% if r.status == 'OVERDUE' %}overdue-row{% endif %}">
+            <td>
+              <div style="font-weight:500;font-size:14px;">{{ r.user.get_full_name|default:r.user.username }}</div>
+              <div style="font-size:11px;color:var(--ink3);">
+                {{ r.user.get_role_display }}
+                {% if r.user.student_id %} · {{ r.user.student_id }}{% endif %}
+              </div>
+            </td>
+            <td><span class="book-title-cell">📖 {{ r.book.title|truncatechars:30 }}</span></td>
+            <td>
+              <span class="badge {% if r.status == 'OVERDUE' %}badge-red{% elif r.status == 'RETURNED' %}badge-green{% elif r.status == 'RESERVED' %}badge-teal{% else %}badge-blue{% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.borrowed_date|date:"d M Y" }}</td>
+            <td style="font-size:13px;">{{ r.due_date }}</td>
+            <td>
+              {% if r.status == 'BORROWED' or r.status == 'OVERDUE' %}
+                <a href="{% url 'accounts:return_book' r.pk %}" class="btn btn-success btn-sm">Return</a>
+              {% else %}
+                <span style="color:var(--ink3);font-size:13px;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="empty">
+                <div class="empty-icon">📭</div>
+                <p>{% if activity_q or activity_status %}No records match your search.{% else %}No activity yet.{% endif %}</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- ═══ STUDENT / TEACHER ═══ -->
+
+  <div class="stats-grid">
+    <div class="stat-card stat-blue">
+      <div class="stat-num">{{ my_borrows.count }}</div>
+      <div class="stat-lbl">Borrowed Books</div>
+      <div class="stat-icon">📚</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-num">{{ my_overdue.count }}</div>
+      <div class="stat-lbl">Overdue</div>
+      <div class="stat-icon">⏰</div>
+    </div>
+    <div class="stat-card stat-gold">
+      <div class="stat-num">₹{{ total_fine }}</div>
+      <div class="stat-lbl">Outstanding Fine</div>
+      <div class="stat-icon">💰</div>
+    </div>
+  </div>
+
+  <div class="quick-row">
+    <a href="{% url 'books:book_list' %}" class="btn btn-gold">🔍 Browse Books</a>
+    <a href="{% url 'books:document_list' %}" class="btn btn-outline">📄 Documents</a>
+    <a href="{% url 'accounts:my_borrows' %}" class="btn btn-outline">📋 Full History</a>
+    <a href="{% url 'accounts:profile' %}" class="btn btn-outline">👤 My Profile</a>
+  </div>
+
+  {% if my_borrows %}
+    <div class="section-title">Currently Borrowed</div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Book</th><th>Author</th><th>Borrowed On</th><th>Due Date</th><th>Fine</th></tr>
+          </thead>
+          <tbody>
+            {% for r in my_borrows %}
+            <tr class="{% if r.calculate_fine > 0 %}overdue-book-row{% endif %}">
+              <td><span class="book-title-cell">📖 {{ r.book.title }}</span></td>
+              <td style="color:var(--ink3);font-size:13px;">{{ r.book.author }}</td>
+              <td style="color:var(--ink3);font-size:13px;">{{ r.borrowed_date|date:"d M Y" }}</td>
+              <td style="font-size:13px;">{{ r.due_date }}</td>
+              <td>
+                {% if r.calculate_fine > 0 %}
+                  <span class="fine-chip">₹{{ r.calculate_fine }}</span>
+                {% else %}<span style="color:var(--ink3);">—</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card" style="text-align:center;padding:60px 20px;">
+      <div style="font-size:48px;margin-bottom:12px;">📭</div>
+      <p style="color:var(--ink3);margin-bottom:16px;">No books currently borrowed.</p>
+      <a href="{% url 'books:book_list' %}" class="btn btn-gold">Browse the Catalogue</a>
+    </div>
+  {% endif %}
+  {% endif %}
+
+</div>
+
+<script>
+  let debounceTimer;
+  function debounceSubmit() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      document.getElementById('activityFilterForm').submit();
+    }, 500);
+  }
+</script>
+{% endblock %}

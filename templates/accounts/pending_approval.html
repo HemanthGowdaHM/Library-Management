@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Pending Approval{% endblock %}
+{% block content %}
+<div style="min-height:80vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;">
+  <div style="max-width:480px;width:100%;text-align:center;">
+    <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--navy-deep));display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 24px;">⏳</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:12px;">Account Pending Approval</h2>
+    <p style="color:var(--ink3);line-height:1.7;margin-bottom:24px;">Your registration is under review. The librarian will approve your account shortly. You'll be able to sign in once approved.</p>
+    <div style="background:var(--gold-lt);border:1px solid var(--gold-bd);border-radius:var(--radius);padding:14px 18px;margin-bottom:24px;font-size:13.5px;color:var(--warn);text-align:left;line-height:1.6;">
+      💡 If you've been waiting more than 24 hours, contact the librarian at the college library counter.
+    </div>
+    <a href="{% url 'accounts:login' %}" class="btn btn-outline">← Back to Login</a>
+  </div>
+</div>
+{% endblock %}

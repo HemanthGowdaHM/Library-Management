@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+{% block title %}Issue Book{% endblock %}
+
+{% block extra_head %}
+<style>
+  .issue-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── SEARCH FIELDS ── */
+  .search-field-wrap { position: relative; }
+
+  .search-input-row {
+    display: flex; align-items: center;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input-row:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(229,160,50,0.12);
+  }
+  .search-input-row .search-icon {
+    padding: 0 12px 0 14px;
+    font-size: 16px; color: var(--ink3); flex-shrink: 0;
+  }
+  .search-input-row input {
+    flex: 1; padding: 11px 4px;
+    border: none; outline: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--ink);
+    background: transparent;
+    box-shadow: none !important;
+  }
+  .search-input-row .clear-btn {
+    padding: 0 12px; background: none; border: none;
+    cursor: pointer; color: var(--ink3); font-size: 16px;
+    display: none;
+  }
+  .search-input-row .clear-btn.visible { display: block; }
+  .search-input-row .spinner {
+    width: 16px; height: 16px; margin-right: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: none; flex-shrink: 0;
+  }
+  .search-input-row .spinner.active { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── DROPDOWN RESULTS ── */
+  .search-dropdown {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(26,26,46,0.14);
+    z-index: 100;
+    max-height: 280px; overflow-y: auto;
+    display: none;
+  }
+  .search-dropdown.open { display: block; animation: dropIn 0.15s ease; }
+  @keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+  .dropdown-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 16px; cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: var(--paper); }
+  .dropdown-item:hover .item-name { color: var(--gold); }
+
+  .item-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--navy-deep));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--gold);
+    flex-shrink: 0;
+  }
+  .item-book-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, #e5a032, #c8841a);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .item-name { font-weight: 500; font-size: 14px; color: var(--ink); }
+  .item-meta { font-size: 12px; color: var(--ink3); margin-top: 1px; }
+  .item-badge {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+    background: var(--paper); color: var(--ink3);
+    flex-shrink: 0;
+  }
+  .item-badge.low { background: #fdf0ef; color: var(--danger); }
+  .item-badge.ok  { background: #edf7f1; color: var(--success); }
+
+  .dropdown-empty {
+    padding: 20px 16px; text-align: center;
+    font-size: 13px; color: var(--ink3);
+  }
+
+  /* ── SELECTED CARD ── */
+  .selected-card {
+    display: none;
+    background: var(--paper);
+    border: 1.5px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    align-items: center;
+    gap: 12px;
+  }
+  .selected-card.visible { display: flex; }
+  .selected-info { flex: 1; }
+  .selected-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+  .selected-sub  { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+  .selected-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink3); font-size: 18px; padding: 2px;
+    transition: color 0.15s;
+  }
+  .selected-remove:hover { color: var(--danger); }
+
+  /* ── LOAN CHIPS ── */
+  .loan-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .loan-chip {
+    padding: 8px 16px; border: 1.5px solid var(--border);
+    border-radius: 20px; font-size: 13px; font-weight: 500;
+    cursor: pointer; background: #fff; color: var(--ink3);
+    font-family: 'DM Sans', sans-serif; transition: all 0.18s;
+  }
+  .loan-chip:hover { border-color: var(--gold); color: var(--ink); }
+  .loan-chip.active { background: var(--gold-lt); border-color: var(--gold); color: var(--gold); }
+
+  /* ── PREVIEW PANEL ── */
+  .preview-panel {
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%);
+    border-radius: var(--radius);
+    padding: 28px;
+    position: sticky; top: 80px;
+    box-shadow: var(--shadow-lg);
+  }
+  .preview-heading {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 20px;
+  }
+  .preview-empty {
+    text-align: center; padding: 28px 0;
+    color: rgba(255,255,255,0.25);
+  }
+  .preview-empty .icon { font-size: 36px; margin-bottom: 8px; }
+  .preview-empty p { font-size: 13px; line-height: 1.5; }
+
+  .slip-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    font-size: 13.5px;
+  }
+  .slip-row:last-child { border-bottom: none; }
+  .slip-key { color: rgba(255,255,255,0.4); flex-shrink: 0; }
+  .slip-val { color: #fff; font-weight: 500; text-align: right; }
+  .slip-val.highlight { color: var(--gold); font-size: 15px; }
+
+  .preview-fine {
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    font-size: 11px; color: rgba(255,255,255,0.25);
+  }
+
+  .submit-btn-wrap { margin-top: 8px; }
+
+  @media(max-width: 860px) {
+    .issue-layout { grid-template-columns: 1fr; }
+    .preview-panel { position: static; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:920px;">
+  <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Dashboard</a>
+  <div class="page-title">Issue a Book</div>
+  <div class="page-sub">Search for a member and book to create a borrow record</div>
+
+  <div class="issue-layout">
+
+    <!-- ── FORM ── -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Issue Details</span></div>
+      <div class="card-body">
+        <form method="post" id="issueForm" onsubmit="return validateForm()">
+          {% csrf_token %}
+          <input type="hidden" name="user_id" id="userId">
+          <input type="hidden" name="book_id" id="bookId">
+          <input type="hidden" name="due_days" id="dueDaysInput" value="14">
+
+          <!-- MEMBER SEARCH -->
+          <div class="form-group">
+            <label>Member <span style="color:var(--gold)">*</span></label>
+            <div class="search-field-wrap" id="memberWrap">
+              <div class="search-input-row" id="memberInputRow">
+                <span class="search-icon">👤</span>
+                <input type="text" id="memberSearch"
+                  placeholder="Search by name or student ID…"
+                  autocomplete="off"
+                  oninput="onMemberInput(this)">
+                <div class="spinner" id="memberSpinner"></div>
+                <button type="button" class="clear-btn" id="memberClear" onclick="clearMember()">×</button>
+              </div>
+              <div class="search-dropdown" id="memberDropdown"></div>
+            </div>
+            <div class="selected-card" id="memberSelected">
+              <div class="item-avatar" id="memberAvatar"></div>
+              <div class="selected-info">
+                <div class="selected-name" id="memberSelectedName"></div>
+                <div class="selected-sub" id="memberSelectedSub"></div>
+              </div>
+              <button type="button" class="selected-remove" onclick="clearMember()" title="Remove">×</button>
+            </div>
+            <div class="field-error" id="memberError" style="display:none;">Please select a member.</div>
+          </div>
+
+          <!-- BOOK SEARCH -->
+          <div class="form-group">
+            <label>Book <span style="color:var(--gold)">*</span></label>
+            <div class="search-field-wrap" id="bookWrap">
+              <div class="search-input-row" id="bookInputRow">
+                <span class="search-icon">📚</span>
+                <input type="text" id="bookSearch"
+                  placeholder="Search by book title or author…"
+                  autocomplete="off"
+                  oninput="onBookInput(this)">
+                <div class="spinner" id="bookSpinner"></div>
+                <button type="button" class="clear-btn" id="bookClear" onclick="clearBook()">×</button>
+              </div>
+              <div class="search-dropdown" id="bookDropdown"></div>
+            </div>
+            <div class="selected-card" id="bookSelected">
+              <div class="item-book-icon">📖</div>
+              <div class="selected-info">
+                <div class="selected-name" id="bookSelectedName"></div>
+                <div class="selected-sub" id="bookSelectedSub"></div>
+              </div>
+              <button type="button" class="selected-remove" onclick="clearBook()" title="Remove">×</button>
+            </div>
+            <div class="field-error" id="bookError" style="display:none;">Please select a book.</div>
+          </div>
+
+          <!-- LOAN DURATION -->
+          <div class="form-group">
+            <label>Loan Duration</label>
+            <div class="loan-chips">
+              <button type="button" class="loan-chip" onclick="setDays(7,this)">1 Week</button>
+              <button type="button" class="loan-chip active" onclick="setDays(14,this)">2 Weeks</button>
+              <button type="button" class="loan-chip" onclick="setDays(21,this)">3 Weeks</button>
+              <button type="button" class="loan-chip" onclick="setDays(30,this)">1 Month</button>
+            </div>
+          </div>
+
+          <div class="submit-btn-wrap">
+            <button type="submit" class="btn btn-gold btn-lg btn-block">Issue Book →</button>
+            <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline btn-block" style="margin-top:8px;">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── LIVE PREVIEW ── -->
+    <div class="preview-panel">
+      <div class="preview-heading">Borrow Slip Preview</div>
+      <div id="previewEmpty" class="preview-empty">
+        <div class="icon">📋</div>
+        <p>Select a member and book<br>to see the borrow slip</p>
+      </div>
+      <div id="previewSlip" style="display:none;"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── STATE ──
+  let selectedMember = null;
+  let selectedBook   = null;
+  let memberTimer, bookTimer;
+
+  // ── MEMBER SEARCH ──
+  function onMemberInput(input) {
+    const q = input.value.trim();
+    document.getElementById('memberClear').classList.toggle('visible', q.length > 0);
+    clearTimeout(memberTimer);
+    if (q.length < 1) { closeDropdown('memberDropdown'); return; }
+    memberTimer = setTimeout(() => fetchMembers(q), 280);
+  }
+
+  async function fetchMembers(q) {
+    const spinner = document.getElementById('memberSpinner');
+    spinner.classList.add('active');
+    try {
+      const res  = await fetch(`{% url 'accounts:search_members_ajax' %}?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderMemberDropdown(data.results);
+    } finally {
+      spinner.classList.remove('active');
+    }
+  }
+
+  function renderMemberDropdown(results) {
+    const dd = document.getElementById('memberDropdown');
+    if (!results.length) {
+      dd.innerHTML = '<div class="dropdown-empty">No members found</div>';
+    } else {
+      dd.innerHTML = results.map(m => `
+        <div class="dropdown-item" onclick="selectMember(${JSON.stringify(m).replace(/"/g,'&quot;')})">
+          <div class="item-avatar">${m.initial}</div>
+          <div>
+            <div class="item-name">${m.name}</div>
+            <div class="item-meta">${m.role}${m.student_id !== '—' ? ' · ' + m.student_id : ''}${m.dept ? ' · ' + m.dept : ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    dd.classList.add('open');
+  }
+
+  function selectMember(m) {
+    selectedMember = m;
+    document.getElementById('userId').value = m.id;
+    document.getElementById('memberSearch').value = '';
+    document.getElementById('memberClear').classList.remove('visible');
+    document.getElementById('memberAvatar').textContent = m.initial;
+    document.getElementById('memberSelectedName').textContent = m.name;
+    document.getElementById('memberSelectedSub').textContent =
+      m.role + (m.student_id !== '—' ? ' · ' + m.student_id : '') + (m.dept ? ' · ' + m.dept : '');
+    document.getElementById('memberSelected').classList.add('visible');
+    document.getElementById('memberInputRow').style.display = 'none';
+    document.getElementById('memberError').style.display = 'none';
+    closeDropdown('memberDropdown');
+    updatePreview();
+  }
+
+  function clearMember() {
+    selectedMember = null;
+    document.getElementById('userId').value = '';
+    document.getElementById('memberSearch').value = '';
+    document.getElementById('memberSelected').classList.remove('visible');
+    document.getElementById('memberInputRow').style.display = 'flex';
+    document.getElementById('memberClear').classList.remove('visible');
+    updatePreview();
+  }
+
+  // ── BOOK SEARCH ──
+  function onBookInput(input) {
+    const q = input.value.trim();
+    document.getElementById('bookClear').classList.toggle('visible', q.length > 0);
+    clearTimeout(bookTimer);
+    if (q.length < 1) { closeDropdown('bookDropdown'); return; }
+    bookTimer = setTimeout(() => fetchBooks(q), 280);
+  }
+
+  async function fetchBooks(q) {
+    const spinner = document.getElementById('bookSpinner');
+    spinner.classList.add('active');
+    try {
+      const res  = await fetch(`{% url 'accounts:search_books_ajax' %}?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderBookDropdown(data.results);
+    } finally {
+      spinner.classList.remove('active');
+    }
+  }
+
+  function renderBookDropdown(results) {
+    const dd = document.getElementById('bookDropdown');
+    if (!results.length) {
+      dd.innerHTML = '<div class="dropdown-empty">No available books found</div>';
+    } else {
+      dd.innerHTML = results.map(b => {
+        const cls = b.qty <= 2 ? 'low' : 'ok';
+        const lbl = b.qty <= 2 ? `Only ${b.qty} left` : `${b.qty} available`;
+        return `
+          <div class="dropdown-item" onclick='selectBook(${JSON.stringify(b)})'>
+            <div class="item-book-icon">📖</div>
+            <div>
+              <div class="item-name">${b.title}</div>
+              <div class="item-meta">${b.author} · ISBN ${b.isbn}</div>
+            </div>
+            <span class="item-badge ${cls}">${lbl}</span>
+          </div>
+        `;
+      }).join('');
+    }
+    dd.classList.add('open');
+  }
+
+  function selectBook(b) {
+    selectedBook = b;
+    document.getElementById('bookId').value = b.id;
+    document.getElementById('bookSearch').value = '';
+    document.getElementById('bookClear').classList.remove('visible');
+    document.getElementById('bookSelectedName').textContent = b.title;
+    document.getElementById('bookSelectedSub').textContent = `by ${b.author} · ${b.qty} ${b.qty === 1 ? 'copy' : 'copies'} available`;
+    document.getElementById('bookSelected').classList.add('visible');
+    document.getElementById('bookInputRow').style.display = 'none';
+    document.getElementById('bookError').style.display = 'none';
+    closeDropdown('bookDropdown');
+    updatePreview();
+  }
+
+  function clearBook() {
+    selectedBook = null;
+    document.getElementById('bookId').value = '';
+    document.getElementById('bookSearch').value = '';
+    document.getElementById('bookSelected').classList.remove('visible');
+    document.getElementById('bookInputRow').style.display = 'flex';
+    document.getElementById('bookClear').classList.remove('visible');
+    updatePreview();
+  }
+
+  // ── LOAN DURATION ──
+  function setDays(days, el) {
+    document.getElementById('dueDaysInput').value = days;
+    document.querySelectorAll('.loan-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    updatePreview();
+  }
+
+  // ── PREVIEW ──
+  function updatePreview() {
+    const days = parseInt(document.getElementById('dueDaysInput').value);
+    const due  = new Date();
+    due.setDate(due.getDate() + days);
+    const dueStr = due.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+    if (!selectedMember || !selectedBook) {
+      document.getElementById('previewEmpty').style.display = 'block';
+      document.getElementById('previewSlip').style.display  = 'none';
+      return;
+    }
+    document.getElementById('previewEmpty').style.display = 'none';
+    document.getElementById('previewSlip').style.display  = 'block';
+    document.getElementById('previewSlip').innerHTML = `
+      <div class="slip-row"><span class="slip-key">Member</span><span class="slip-val">${selectedMember.name}</span></div>
+      <div class="slip-row"><span class="slip-key">Role</span><span class="slip-val">${selectedMember.role}</span></div>
+      ${selectedMember.student_id !== '—' ? `<div class="slip-row"><span class="slip-key">Student ID</span><span class="slip-val">${selectedMember.student_id}</span></div>` : ''}
+      <div class="slip-row"><span class="slip-key">Book</span><span class="slip-val">${selectedBook.title}</span></div>
+      <div class="slip-row"><span class="slip-key">Author</span><span class="slip-val">${selectedBook.author}</span></div>
+      <div class="slip-row"><span class="slip-key">Duration</span><span class="slip-val">${days} days</span></div>
+      <div class="slip-row"><span class="slip-key">Due Date</span><span class="slip-val highlight">${dueStr}</span></div>
+      <div class="preview-fine">Fine: ₹5 per day after due date</div>
+    `;
+  }
+
+  // ── VALIDATION ──
+  function validateForm() {
+    let ok = true;
+    if (!selectedMember) {
+      document.getElementById('memberError').style.display = 'block';
+      ok = false;
+    }
+    if (!selectedBook) {
+      document.getElementById('bookError').style.display = 'block';
+      ok = false;
+    }
+    return ok;
+  }
+
+  // ── CLOSE DROPDOWNS ──
+  function closeDropdown(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!document.getElementById('memberWrap').contains(e.target)) closeDropdown('memberDropdown');
+    if (!document.getElementById('bookWrap').contains(e.target))   closeDropdown('bookDropdown');
+  });
+</script>
+{% endblock %}

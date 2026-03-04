@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Delete Member{% endblock %}
+{% block content %}
+<div class="page" style="max-width:460px;">
+  <a href="{% url 'accounts:manage_users' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Members</a>
+
+  <div class="card" style="border-color:#f0b8b3;">
+    <div style="background:linear-gradient(135deg,#c0392b,#962d22);padding:22px 26px;border-radius:var(--radius) var(--radius) 0 0;">
+      <div style="font-size:32px;margin-bottom:8px;">🗑️</div>
+      <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;">Delete Member Account</h3>
+    </div>
+    <div class="card-body">
+      <p style="margin-bottom:12px;font-size:15px;">
+        You're about to permanently delete <strong>{{ member.get_full_name|default:member.username }}</strong>'s account.
+      </p>
+      <div style="background:#fdf0ef;border:1px solid #f0b8b3;border-radius:8px;padding:12px 14px;margin-bottom:22px;font-size:13px;color:var(--danger);line-height:1.6;">
+        ⚠️ This will also delete all their borrow history. This action cannot be undone.
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-danger">Yes, Delete Account</button>
+          <a href="{% url 'accounts:manage_users' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

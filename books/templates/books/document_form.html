@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Document{% endblock %}
+
+{% block extra_head %}
+<style>
+  .year-field { display:none; }
+  .year-field.visible { display:block; }
+
+  .file-drop {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 28px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--paper);
+    position: relative;
+  }
+  .file-drop:hover, .file-drop.dragover { border-color: var(--gold); background: var(--gold-lt); }
+  .file-drop input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width:100%; height:100%;
+  }
+  .file-drop-icon { font-size: 36px; margin-bottom: 8px; }
+  .file-drop-text { font-size: 14px; color: var(--ink3); }
+  .file-drop-text strong { color: var(--gold); }
+  .file-name-display { margin-top: 10px; font-size: 13px; color: var(--success); font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:600px;">
+  <a href="{% url 'books:document_list' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Documents</a>
+  <div class="page-title">{{ action }} Document</div>
+  <div class="page-sub">Upload PDFs, question papers, notes or study material</div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" id="docForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label>Document Type</label>
+          <select name="doc_type" id="docType" onchange="toggleYear()" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
+            {% for value, label in form.fields.doc_type.choices %}
+              <option value="{{ value }}" {% if form.doc_type.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          {% for e in form.doc_type.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" name="title" placeholder="e.g. Data Structures — Mid Sem 2024"
+            value="{{ form.title.value|default:'' }}">
+          {% for e in form.title.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Subject / Course</label>
+            <input type="text" name="subject" placeholder="e.g. Data Structures"
+              value="{{ form.subject.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <input type="text" name="department" placeholder="e.g. Computer Science"
+              value="{{ form.department.value|default:'' }}">
+          </div>
+        </div>
+
+        <!-- Year — shown only for question papers -->
+        <div class="form-group year-field" id="yearField">
+          <label>Exam Year</label>
+          <input type="number" name="year" placeholder="e.g. 2024" min="2000" max="2099"
+            value="{{ form.year.value|default:'' }}">
+          {% for e in form.year.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+          <label>Description <span style="color:var(--ink3);font-weight:400;text-transform:none;">(optional)</span></label>
+          <textarea name="description" rows="2" placeholder="Brief description…">{{ form.description.value|default:'' }}</textarea>
+        </div>
+
+        <!-- File Upload -->
+        <div class="form-group">
+          <label>File <span style="color:var(--ink3);font-weight:400;text-transform:none;">(PDF, DOC, PPT, image — max 50 MB)</span></label>
+          {% if doc %}
+            <div style="background:var(--paper);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--ink3);">
+              Current file: <strong>{{ doc.file.name }}</strong>
+              <br><small>Upload a new file to replace it, or leave blank to keep current.</small>
+            </div>
+          {% endif %}
+          <div class="file-drop" id="fileDrop">
+            <input type="file" name="file" id="fileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.png"
+              onchange="showFileName(this)" {% if not doc %}required{% endif %}>
+            <div class="file-drop-icon">📁</div>
+            <div class="file-drop-text">Drag & drop or <strong>click to browse</strong></div>
+            <div class="file-drop-text" style="font-size:12px;margin-top:4px;">Supported: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG</div>
+            <div class="file-name-display" id="fileNameDisplay"></div>
+          </div>
+          {% for e in form.file.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+
+        <!-- Visibility -->
+        <div style="background:var(--paper);border-radius:8px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" name="is_public" id="isPublic"
+            {% if form.is_public.value %}checked{% endif %}
+            style="width:18px;height:18px;accent-color:var(--gold);">
+          <label for="isPublic" style="margin:0;font-size:14px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink);cursor:pointer;">
+            Visible to all approved members
+          </label>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-gold">{{ action }} Document</button>
+          <a href="{% url 'books:document_list' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleYear() {
+    const type = document.getElementById('docType').value;
+    const yearField = document.getElementById('yearField');
+    if (type === 'QUESTION_CURR' || type === 'QUESTION_PREV') {
+      yearField.classList.add('visible');
+    } else {
+      yearField.classList.remove('visible');
+    }
+  }
+
+  function showFileName(input) {
+    const display = document.getElementById('fileNameDisplay');
+    if (input.files && input.files[0]) {
+      display.textContent = '✓ ' + input.files[0].name;
+    }
+  }
+
+  // Drag and drop highlight
+  const drop = document.getElementById('fileDrop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('dragover'); });
+
+  // Init year field visibility
+  toggleYear();
+</script>
+{% endblock %}

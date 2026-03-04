@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Members{% endblock %}
+
+{% block extra_head %}
+<style>
+  .filter-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .filter-bar select {
+    padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink);
+    background: #fff; outline: none; cursor: pointer;
+  }
+  .filter-bar select:focus { border-color: var(--gold); }
+  .count-tag { margin-left:auto; font-size:13px; color:var(--ink3); }
+
+  .avatar-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy-mid), var(--navy-deep));
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--gold);
+    flex-shrink: 0;
+  }
+  .member-cell { display: flex; align-items: center; gap: 10px; }
+  .member-name { font-weight: 500; font-size: 14px; }
+  .member-email { font-size: 12px; color: var(--ink3); }
+  .action-row { display: flex; gap: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div class="page-title">Members</div>
+      <div class="page-sub">Manage library members, roles, and access</div>
+    </div>
+    <a href="{% url 'accounts:create_user' %}" class="btn btn-gold">+ Add Member</a>
+  </div>
+
+  <form method="get" class="filter-bar">
+    <select name="role">
+      <option value="">All Roles</option>
+      {% for value, label in roles %}
+        <option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="approved">
+      <option value="">All Status</option>
+      <option value="pending" {% if approved_filter == 'pending' %}selected{% endif %}>⏳ Pending</option>
+      <option value="approved" {% if approved_filter == 'approved' %}selected{% endif %}>✓ Approved</option>
+    </select>
+    <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+    <a href="{% url 'accounts:manage_users' %}" class="btn btn-outline btn-sm">Reset</a>
+    <span class="count-tag">{{ users.count }} member{{ users.count|pluralize }}</span>
+  </form>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Member</th><th>Role</th><th>Department</th>
+            <th>Student ID</th><th>Status</th><th>Joined</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in users %}
+          <tr>
+            <td>
+              <div class="member-cell">
+                <div class="avatar-circle">{{ member.first_name|first|upper|default:member.username|first|upper }}</div>
+                <div>
+                  <div class="member-name">{{ member.get_full_name|default:member.username }}</div>
+                  <div class="member-email">{{ member.email|default:"—" }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="badge {% if member.role == 'ADMIN' %}badge-red{% elif member.role == 'LIBRARIAN' %}badge-gold{% elif member.role == 'TEACHER' %}badge-teal{% else %}badge-blue{% endif %}">
+                {{ member.get_role_display }}
+              </span>
+            </td>
+            <td style="font-size:13px;color:var(--ink3);">{{ member.department|default:"—" }}</td>
+            <td style="font-size:13px;font-family:monospace;">{{ member.student_id|default:"—" }}</td>
+            <td>
+              {% if member.is_approved %}
+                <span class="badge badge-green">✓ Approved</span>
+              {% else %}
+                <span class="badge badge-gold">⏳ Pending</span>
+              {% endif %}
+            </td>
+            <td style="font-size:12px;color:var(--ink3);">{{ member.date_joined|date:"d M Y" }}</td>
+            <td>
+              <div class="action-row">
+                <a href="{% url 'accounts:approve_user' member.pk %}" class="btn btn-outline btn-sm">Edit</a>
+                <a href="{% url 'accounts:user_history' member.pk %}" class="btn btn-outline btn-sm">History</a>
+                {% if request.user.role == 'ADMIN' and member != request.user %}
+                  <a href="{% url 'accounts:delete_user' member.pk %}" class="btn btn-sm" style="background:#fdf0ef;color:var(--danger);border:1.5px solid #f0b8b3;">Del</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div><p>No members found.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Documents{% endblock %}
+
+{% block extra_head %}
+<style>
+  .doc-filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+  .doc-filters select, .doc-filters input {
+    padding:9px 12px; border:1.5px solid var(--border); border-radius:8px;
+    font-family:'DM Sans',sans-serif; font-size:13px; color:var(--ink);
+    background:#fff; outline:none;
+  }
+  .doc-filters select:focus, .doc-filters input:focus { border-color:var(--gold); }
+
+  .doc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  .doc-card {
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); overflow:hidden; transition:box-shadow 0.2s, transform 0.2s;
+    display:flex; flex-direction:column;
+  }
+  .doc-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-2px); }
+
+  .doc-type-bar { height:5px; }
+  .bar-pdf           { background:linear-gradient(90deg,#e74c3c,#c0392b); }
+  .bar-question-curr { background:linear-gradient(90deg,var(--gold),var(--gold-dk)); }
+  .bar-question-prev { background:linear-gradient(90deg,#8e44ad,#6c3483); }
+  .bar-notes         { background:linear-gradient(90deg,var(--info),#0a5858); }
+  .bar-other         { background:linear-gradient(90deg,var(--ink3),var(--ink2)); }
+
+  .doc-body { padding:16px 18px; flex:1; }
+  .doc-icon { font-size:28px; margin-bottom:8px; }
+  .doc-title { font-family:'Playfair Display',serif; font-size:15px; font-weight:600; color:var(--ink); margin-bottom:4px; line-height:1.3; }
+  .doc-subject { font-size:13px; color:var(--ink3); margin-bottom:8px; }
+  .doc-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .doc-tag { background:var(--paper); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:11px; color:var(--ink3); }
+  .doc-tag-type { border-radius:6px; padding:2px 9px; font-size:11px; font-weight:600; }
+  .type-pdf           { background:#fdf0ef; color:#c0392b; }
+  .type-question-curr { background:var(--gold-lt); color:var(--warn); }
+  .type-question-prev { background:#f4edfb; color:#6c3483; }
+  .type-notes         { background:#e6f4f4; color:var(--info); }
+  .type-other         { background:var(--paper); color:var(--ink3); }
+
+  .doc-footer { padding:10px 18px; border-top:1px solid var(--border); background:var(--paper); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .doc-uploader { font-size:11px; color:var(--ink3); }
+
+  .stat-mini { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  .mini-stat {
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    padding:12px 18px; display:flex; align-items:center; gap:10px;
+    font-size:13px; color:var(--ink3);
+  }
+  .mini-stat strong { font-family:'Playfair Display',serif; font-size:22px; color:var(--ink); }
+
+  .tab-row { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+  .tab-link { padding:8px 18px; border-radius:8px; font-size:14px; font-weight:500; text-decoration:none; color:var(--ink3); border:1.5px solid var(--border); background:#fff; transition:all 0.18s; }
+  .tab-link:hover { border-color:var(--gold); color:var(--ink); }
+  .tab-link.active { background:linear-gradient(135deg,var(--navy),var(--navy-deep)); color:#fff; border-color:var(--navy); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+    <div>
+      <div class="page-title">Documents & Resources</div>
+      <div class="page-sub">PDFs, question papers, notes and study material</div>
+    </div>
+    {% if can_manage %}
+      <a href="{% url 'books:upload_document' %}" class="btn btn-gold">📤 Upload Document</a>
+    {% endif %}
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-row">
+    <a href="{% url 'books:book_list' %}" class="tab-link">📚 Books</a>
+    <a href="{% url 'books:document_list' %}" class="tab-link {% if not selected_type %}active{% endif %}">📄 All Documents</a>
+    <a href="{% url 'books:document_list' %}?type=QUESTION_CURR" class="tab-link {% if selected_type == 'QUESTION_CURR' %}active{% endif %}">📝 Current Year</a>
+    <a href="{% url 'books:document_list' %}?type=QUESTION_PREV" class="tab-link {% if selected_type == 'QUESTION_PREV' %}active{% endif %}">🗂 Previous Years</a>
+    <a href="{% url 'books:document_list' %}?type=PDF" class="tab-link {% if selected_type == 'PDF' %}active{% endif %}">📕 PDFs</a>
+    <a href="{% url 'books:document_list' %}?type=NOTES" class="tab-link {% if selected_type == 'NOTES' %}active{% endif %}">📓 Notes</a>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="stat-mini">
+    <div class="mini-stat"><strong>{{ docs.count }}</strong> documents</div>
+    <div class="mini-stat"><strong>{{ qp_current }}</strong> current year papers</div>
+    <div class="mini-stat"><strong>{{ qp_previous }}</strong> previous year papers</div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="doc-filters">
+    {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+    <input type="text" name="q" placeholder="Search title, subject…" value="{{ query }}" style="flex:1;min-width:200px;">
+    <select name="dept">
+      <option value="">All Departments</option>
+      {% for dept in departments %}
+        <option value="{{ dept }}" {% if selected_dept == dept %}selected{% endif %}>{{ dept }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+    <a href="{% url 'books:document_list' %}" class="btn btn-outline btn-sm">Reset</a>
+  </form>
+
+  {% if docs %}
+  <div class="doc-grid">
+    {% for doc in docs %}
+    <div class="doc-card">
+      <div class="doc-type-bar
+        {% if doc.doc_type == 'PDF' %}bar-pdf
+        {% elif doc.doc_type == 'QUESTION_CURR' %}bar-question-curr
+        {% elif doc.doc_type == 'QUESTION_PREV' %}bar-question-prev
+        {% elif doc.doc_type == 'NOTES' %}bar-notes
+        {% else %}bar-other{% endif %}">
+      </div>
+      <div class="doc-body">
+        <div class="doc-icon">
+          {% if doc.doc_type == 'PDF' %}📕
+          {% elif doc.doc_type == 'QUESTION_CURR' %}📝
+          {% elif doc.doc_type == 'QUESTION_PREV' %}🗂
+          {% elif doc.doc_type == 'NOTES' %}📓
+          {% else %}📄{% endif %}
+        </div>
+        <div class="doc-title">{{ doc.title }}</div>
+        {% if doc.subject %}<div class="doc-subject">{{ doc.subject }}</div>{% endif %}
+        <div class="doc-tags">
+          <span class="doc-tag-type
+            {% if doc.doc_type == 'PDF' %}type-pdf
+            {% elif doc.doc_type == 'QUESTION_CURR' %}type-question-curr
+            {% elif doc.doc_type == 'QUESTION_PREV' %}type-question-prev
+            {% elif doc.doc_type == 'NOTES' %}type-notes
+            {% else %}type-other{% endif %}">
+            {{ doc.get_doc_type_display }}
+          </span>
+          {% if doc.department %}<span class="doc-tag">{{ doc.department }}</span>{% endif %}
+          {% if doc.year %}<span class="doc-tag">{{ doc.year }}</span>{% endif %}
+          <span class="doc-tag">{{ doc.file_extension|upper }}</span>
+        </div>
+        {% if doc.description %}
+          <div style="font-size:13px;color:var(--ink3);line-height:1.5;">{{ doc.description|truncatechars:80 }}</div>
+        {% endif %}
+      </div>
+      <div class="doc-footer">
+        <div class="doc-uploader">
+          Uploaded {{ doc.uploaded_at|date:"d M Y" }}
+          {% if doc.uploaded_by %} by {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}{% endif %}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <a href="{{ doc.file.url }}" class="btn btn-gold btn-sm" target="_blank">⬇ Download</a>
+          {% if can_manage %}
+            <a href="{% url 'books:edit_document' doc.pk %}" class="btn btn-outline btn-sm">Edit</a>
+            <a href="{% url 'books:delete_document' doc.pk %}" class="btn btn-sm" style="background:#fdf0ef;color:var(--danger);border:1.5px solid #f0b8b3;">Del</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:60px 20px;">
+    <div style="font-size:48px;margin-bottom:12px;">📭</div>
+    <p style="color:var(--ink3);margin-bottom:16px;">No documents found.</p>
+    {% if can_manage %}
+      <a href="{% url 'books:upload_document' %}" class="btn btn-gold">Upload First Document</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — College Library</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated background orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.25;
+      animation: float 8s ease-in-out infinite;
+    }
+    .orb-1 { width: 400px; height: 400px; background: #e5a032; top: -100px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 300px; height: 300px; background: #0f3460; bottom: -80px; right: -80px; animation-delay: 3s; }
+    .orb-3 { width: 200px; height: 200px; background: #e5a032; bottom: 20%; left: 10%; animation-delay: 5s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50%       { transform: translateY(-30px) scale(1.05); }
+    }
+
+    .container {
+      text-align: center;
+      padding: 48px 32px;
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .error-code {
+      font-family: 'Playfair Display', serif;
+      font-size: 130px;
+      font-weight: 700;
+      line-height: 1;
+      color: transparent;
+      background: linear-gradient(135deg, #e5a032, #c8841a, #e5a032);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: 8px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+
+    .book-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      display: block;
+      animation: wiggle 2s ease-in-out infinite;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-5deg); }
+      50%       { transform: rotate(5deg); }
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px; font-weight: 700;
+      color: #ffffff; margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px; line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    .url-display {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: monospace;
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 36px;
+      word-break: break-all;
+    }
+
+    .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 500;
+      text-decoration: none; cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.2s;
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #e5a032, #c8841a);
+      color: #fff; border-color: #e5a032;
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(229,160,50,0.4); }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.7);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    .suggestions {
+      margin-top: 44px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 28px;
+    }
+    .suggestions p {
+      font-size: 12px; color: rgba(255,255,255,0.3);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+    }
+    .suggestion-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .suggestion-links a {
+      color: rgba(255,255,255,0.5); font-size: 13px; text-decoration: none;
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.18s;
+    }
+    .suggestion-links a:hover { color: #e5a032; border-color: #e5a032; background: rgba(229,160,50,0.08); }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="container">
+    <span class="book-icon">📚</span>
+    <div class="error-code">404</div>
+    <h1>Page Not Found</h1>
+    <p class="subtitle">
+      Looks like this page took a long walk to the restricted section and never came back.
+      The URL you requested doesn't exist in our library.
+    </p>
+
+    <div class="url-display">{{ request.path }}</div>
+
+    <div class="actions">
+      <a href="{% url 'accounts:dashboard' %}" class="btn btn-gold">🏠 Go to Dashboard</a>
+      <a href="javascript:history.back()" class="btn btn-ghost">← Go Back</a>
+    </div>
+
+    <div class="suggestions">
+      <p>You might be looking for</p>
+      <div class="suggestion-links">
+        <a href="{% url 'books:book_list' %}">📚 Books</a>
+        <a href="{% url 'books:document_list' %}">📄 Documents</a>
+        <a href="{% url 'accounts:my_borrows' %}">📋 My Borrows</a>
+        <a href="{% url 'accounts:profile' %}">👤 Profile</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

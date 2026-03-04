@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="page" style="max-width:660px;">
+  <div class="page-title">My Profile</div>
+  <div class="page-sub">Manage your personal information and account settings</div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <!-- Profile hero strip -->
+    <div style="background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);padding:24px;border-radius:var(--radius) var(--radius) 0 0;display:flex;align-items:center;gap:18px;">
+      <div style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dk));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;font-family:'Playfair Display',serif;">
+        {{ request.user.first_name|first|upper|default:request.user.username|first|upper }}
+      </div>
+      <div>
+        <div style="color:#fff;font-family:'Playfair Display',serif;font-size:20px;font-weight:600;">{{ request.user.get_full_name|default:request.user.username }}</div>
+        <div style="color:rgba(255,255,255,0.55);font-size:13px;">{{ request.user.username }} &nbsp;·&nbsp; {{ request.user.email|default:"No email" }}</div>
+      </div>
+      <div style="margin-left:auto;">
+        <span class="badge role-{{ request.user.role|lower }}" style="border-radius:6px;">{{ request.user.get_role_display }}</span>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>First Name</label>
+            <input type="text" name="first_name" placeholder="First name" value="{{ form.first_name.value|default:'' }}">
+            {% for e in form.first_name.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" name="last_name" placeholder="Last name" value="{{ form.last_name.value|default:'' }}">
+            {% for e in form.last_name.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" placeholder="you@college.edu" value="{{ form.email.value|default:'' }}">
+          {% for e in form.email.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="tel" name="phone_number" placeholder="9876543210" value="{{ form.phone_number.value|default:'' }}">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <input type="text" name="department" placeholder="e.g. Computer Science" value="{{ form.department.value|default:'' }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Profile Picture</label>
+          <input type="file" name="profile_picture" accept="image/*">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button type="submit" class="btn btn-gold">Save Changes</button>
+          <a href="{% url 'accounts:change_password' %}" class="btn btn-outline">🔒 Change Password</a>
+          <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Read-only info -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Account Information</span></div>
+    <div class="card-body" style="padding:0;">
+      {% for label, value in account_info %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;color:var(--ink3);">{{ label }}</span>
+        <span style="font-weight:500;font-size:14px;">{{ value }}</span>
+      </div>
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 24px;">
+        <span style="font-size:13px;color:var(--ink3);">Role</span>
+        <span class="badge {% if request.user.role == 'ADMIN' %}badge-red{% elif request.user.role == 'LIBRARIAN' %}badge-gold{% elif request.user.role == 'TEACHER' %}badge-teal{% else %}badge-blue{% endif %}">
+          {{ request.user.get_role_display }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

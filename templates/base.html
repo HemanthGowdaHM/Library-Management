@@ -1,54 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Library Management</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Library{% endblock %} — College Library</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:      #1a1a2e;
+      --navy-mid:  #16213e;
+      --navy-deep: #0f3460;
+      --gold:      #e5a032;
+      --gold-dk:   #c8841a;
+      --gold-lt:   #fdf3e0;
+      --gold-bd:   #f0d79a;
+      --cream:     #f8f5f0;
+      --paper:     #f2ede6;
+      --border:    #e8e2d9;
+      --ink:       #1a1a2e;
+      --ink2:      #3d3d5c;
+      --ink3:      #7a7a9a;
+      --white:     #ffffff;
+      --danger:    #c0392b;
+      --success:   #1a7a4a;
+      --warn:      #b5832a;
+      --info:      #0d6e6e;
+      --radius:    10px;
+      --shadow:    0 2px 16px rgba(26,26,46,0.08);
+      --shadow-lg: 0 8px 40px rgba(26,26,46,0.16);
+    }
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-          rel="stylesheet">
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+      padding: 0 32px;
+      height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      border-bottom: 2px solid var(--gold);
+      box-shadow: 0 2px 20px rgba(26,26,46,0.3);
+    }
+
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-brand span { color: var(--gold); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 400;
+      padding: 7px 14px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+    .nav-role-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .role-admin     { background: #c0392b; color: #fff; }
+    .role-librarian { background: var(--gold); color: #fff; }
+    .role-teacher   { background: #0d6e6e; color: #fff; }
+    .role-student   { background: #2563eb; color: #fff; }
+
+    .nav-dropdown { position: relative; }
+    .nav-dropdown-toggle { cursor: pointer; display: flex; align-items: center; }
+    .nav-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      min-width: 190px;
+      overflow: hidden;
+    }
+    .nav-dropdown:hover .nav-dropdown-menu { display: block; animation: dropIn 0.15s ease; }
+    @keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .nav-dropdown-menu a {
+      display: block;
+      padding: 11px 18px;
+      font-size: 14px;
+      color: var(--ink2) !important;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .nav-dropdown-menu a:last-child { border-bottom: none; }
+    .nav-dropdown-menu a:hover { background: var(--paper) !important; color: var(--ink) !important; }
+    .nav-dropdown-menu a.nav-danger { color: var(--danger) !important; }
+
+    /* ── FLASH MESSAGES ── */
+    .flash-wrap { max-width: 960px; margin: 16px auto 0; padding: 0 24px; }
+    .flash {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: var(--radius);
+      font-size: 14px; margin-bottom: 8px;
+      border: 1px solid transparent;
+      animation: fadeSlide 0.3s ease;
+    }
+    @keyframes fadeSlide { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .flash-success { background: #edf7f1; border-color: #a3d9b8; color: var(--success); }
+    .flash-error, .flash-danger { background: #fdf0ef; border-color: #f0b8b3; color: var(--danger); }
+    .flash-warning { background: var(--gold-lt); border-color: var(--gold-bd); color: var(--warn); }
+    .flash-info    { background: #e6f4f4; border-color: #9fd0d0; color: var(--info); }
+    .flash-close { margin-left: auto; background: none; border: none; cursor: pointer; opacity: 0.5; font-size: 18px; line-height: 1; }
+    .flash-close:hover { opacity: 1; }
+
+    /* ── PAGE ── */
+    .page { padding: 32px 24px; max-width: 1160px; margin: 0 auto; }
+
+    /* ── CARDS ── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 600; color: var(--ink);
+    }
+    .card-body { padding: 24px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 20px; border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+      cursor: pointer; border: 1.5px solid transparent;
+      text-decoration: none; transition: all 0.18s; white-space: nowrap;
+    }
+    .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .btn-primary:hover { background: var(--navy-mid); }
+    .btn-gold { background: linear-gradient(135deg, var(--gold), var(--gold-dk)); color: #fff; border-color: var(--gold); }
+    .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(229,160,50,0.4); }
+    .btn-outline { background: transparent; color: var(--ink2); border-color: var(--border); }
+    .btn-outline:hover { border-color: var(--gold); color: var(--ink); background: var(--gold-lt); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #a93226; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #156038; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn-lg { padding: 13px 28px; font-size: 15px; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    /* ── FORM ELEMENTS ── */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 12px; font-weight: 500; color: var(--ink3);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--ink);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(229,160,50,0.12);
+    }
+    input::placeholder { color: #c4bdb5; }
+    .field-error { color: var(--danger); font-size: 12px; margin-top: 4px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    /* ── TABLES ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: var(--paper); border-bottom: 2px solid var(--border); }
+    th {
+      padding: 11px 16px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      color: var(--ink3); text-align: left; white-space: nowrap;
+    }
+    td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+    tbody tr { transition: background 0.12s; }
+    tbody tr:hover { background: var(--paper); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-green { background: #edf7f1; color: var(--success); }
+    .badge-red   { background: #fdf0ef; color: var(--danger); }
+    .badge-gold  { background: var(--gold-lt); color: var(--warn); }
+    .badge-blue  { background: #eff6ff; color: #2563eb; }
+    .badge-teal  { background: #e6f4f4; color: var(--info); }
+    .badge-gray  { background: var(--paper); color: var(--ink3); }
+
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px 22px;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top:0;left:0;right:0; height:3px; }
+    .stat-gold::before  { background: var(--gold); }
+    .stat-navy::before  { background: var(--navy); }
+    .stat-red::before   { background: var(--danger); }
+    .stat-blue::before  { background: #2563eb; }
+    .stat-teal::before  { background: var(--info); }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 38px; font-weight: 700; line-height: 1; margin-bottom: 4px;
+    }
+    .stat-lbl { font-size: 13px; color: var(--ink3); }
+    .stat-icon { position:absolute; top:16px; right:18px; font-size:26px; opacity:0.15; }
+
+    /* ── PAGE HEADER ── */
+    .page-title { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .page-sub   { color: var(--ink3); font-size: 14px; margin-bottom: 24px; }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 600; color: var(--ink);
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── EMPTY STATE ── */
+    .empty { text-align:center; padding:60px 20px; color:var(--ink3); }
+    .empty-icon { font-size:44px; margin-bottom:10px; opacity:0.4; }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:700px) {
+      .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+      .page { padding: 20px 16px; }
+      .navbar { padding: 0 16px; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand" href="{% url 'books:book_list' %}">
-            📚 Library System
-        </a>
-    </div>
-</nav>
-
-<div class="container mt-4">
-
-    <!-- Messages -->
-    {% if messages %}
-        <div id="message-container">
-            {% for message in messages %}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
+{% if user.is_authenticated %}
+<nav class="navbar">
+  <a class="nav-brand" href="{% url 'accounts:dashboard' %}">📚 <span>College</span> Library</a>
+  <ul class="nav-links">
+    <li><a href="{% url 'books:book_list' %}">Browse Books</a></li>
+    <li><a href="{% url 'books:document_list' %}">Documents</a></li>
+    {% if user.can_manage_books %}
+      <li><a href="{% url 'accounts:manage_users' %}">Members</a></li>
+      <li><a href="{% url 'accounts:issue_book' %}">Issue Book</a></li>
+    {% else %}
+      <li><a href="{% url 'accounts:my_borrows' %}">My Books</a></li>
     {% endif %}
+    <li class="nav-dropdown">
+      <a href="#" class="nav-dropdown-toggle">
+        {{ user.get_full_name|default:user.username }}
+        <span class="nav-role-badge role-{{ user.role|lower }}">{{ user.get_role_display }}</span>
+        &nbsp;▾
+      </a>
+      <div class="nav-dropdown-menu">
+        <a href="{% url 'accounts:dashboard' %}">🏠 Dashboard</a>
+        <a href="{% url 'accounts:profile' %}">👤 My Profile</a>
+        <a href="{% url 'accounts:logout' %}" class="nav-danger">⏻ Logout</a>
+      </div>
+    </li>
+  </ul>
+</nav>
+{% endif %}
 
-    {% block content %}
-    {% endblock %}
-
+{% if messages %}
+<div class="flash-wrap">
+  {% for msg in messages %}
+    <div class="flash flash-{{ msg.tags }}">
+      {% if msg.tags == 'success' %}✓{% elif msg.tags == 'error' or msg.tags == 'danger' %}✕{% elif msg.tags == 'warning' %}⚠{% else %}ℹ{% endif %}
+      {{ msg }}
+      <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  {% endfor %}
 </div>
+{% endif %}
 
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script id="v2yqv4">
-  setTimeout(function () {
-    let alerts = document.querySelectorAll('.alert');
-    alerts.forEach(function (alert) {
-      alert.classList.remove('show');
-      alert.classList.add('fade');
-
-      setTimeout(() => alert.remove(), 500); // remove from DOM
-    });
-  }, 3000); // 3 seconds
-</script>
+{% block content %}{% endblock %}
 
 </body>
 </html>

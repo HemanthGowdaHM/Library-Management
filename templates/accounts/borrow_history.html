@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Borrow History{% endblock %}
+{% block content %}
+<div class="page">
+  <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Dashboard</a>
+
+  <div class="page-title">
+    Borrow History
+    {% if member %}<span style="color:var(--gold);"> — {{ member.get_full_name|default:member.username }}</span>{% endif %}
+  </div>
+  <div class="page-sub">Complete borrowing record{% if member %} for this member{% endif %}</div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Book</th><th>Author</th><th>Borrowed</th><th>Due Date</th><th>Returned</th><th>Status</th><th>Fine</th></tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr style="{% if r.status == 'OVERDUE' %}background:#fdf6f6;{% endif %}">
+            <td style="color:var(--ink3);font-size:13px;">{{ forloop.counter }}</td>
+            <td style="font-weight:500;">{{ r.book.title|truncatechars:36 }}</td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.book.author }}</td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.borrowed_date|date:"d M Y" }}</td>
+            <td style="font-size:13px;">{{ r.due_date }}</td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.returned_date|date:"d M Y"|default:"—" }}</td>
+            <td>
+              <span class="badge {% if r.status == 'OVERDUE' %}badge-red{% elif r.status == 'RETURNED' %}badge-green{% elif r.status == 'RESERVED' %}badge-teal{% else %}badge-blue{% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td>
+              {% if r.fine_amount > 0 %}<span style="color:var(--danger);font-weight:600;font-size:13px;">₹{{ r.fine_amount }}</span>
+              {% elif r.status == 'BORROWED' %}<span style="color:var(--ink3);font-size:13px;">₹{{ r.calculate_fine }}*</span>
+              {% else %}<span style="color:var(--ink3);">—</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div><p>No borrow records found.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if records %}
+    <div style="padding:10px 20px;border-top:1px solid var(--border);font-size:12px;color:var(--ink3);">
+      * Estimated fine not yet settled at return
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

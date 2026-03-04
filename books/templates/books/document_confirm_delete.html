@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Delete Document{% endblock %}
+{% block content %}
+<div class="page" style="max-width:460px;">
+  <a href="{% url 'books:document_list' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Documents</a>
+  <div class="card" style="border-color:#f0b8b3;">
+    <div style="background:linear-gradient(135deg,#c0392b,#962d22);padding:22px 26px;border-radius:var(--radius) var(--radius) 0 0;">
+      <div style="font-size:32px;margin-bottom:8px;">🗑️</div>
+      <h3 style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;">Delete Document</h3>
+    </div>
+    <div class="card-body">
+      <p style="margin-bottom:8px;font-size:15px;">Are you sure you want to permanently delete:</p>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 16px;margin-bottom:18px;">
+        <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:600;">{{ doc.title }}</div>
+        <div style="font-size:13px;color:var(--ink3);">{{ doc.get_doc_type_display }}</div>
+      </div>
+      <div style="background:#fdf0ef;border:1px solid #f0b8b3;border-radius:8px;padding:11px 14px;margin-bottom:20px;font-size:13px;color:var(--danger);">
+        ⚠️ The file will be permanently deleted from the server. This cannot be undone.
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-danger">Yes, Delete</button>
+          <a href="{% url 'books:document_list' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
