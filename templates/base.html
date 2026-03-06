@@ -298,6 +298,9 @@
   <ul class="nav-links">
     <li><a href="{% url 'books:book_list' %}">Browse Books</a></li>
     <li><a href="{% url 'books:document_list' %}">Documents</a></li>
+    <li><a href="{% url 'social:reading_lists' %}">📚 Reading Lists</a></li>
+    <li><a href="{% url 'social:study_rooms' %}">👥 Study Groups</a></li>
+    <li><a href="{% url 'social:discussions' %}">💬 Discussions</a></li>
     {% if user.can_manage_books %}
       <li><a href="{% url 'accounts:manage_users' %}">Members</a></li>
       <li><a href="{% url 'accounts:issue_book' %}">Issue Book</a></li>

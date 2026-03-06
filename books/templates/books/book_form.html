@@ -1,65 +1,307 @@
 {% extends 'base.html' %}
 {% block title %}{{ action }} Book{% endblock %}
 
+{% block extra_head %}
+<style>
+  .isbn-row { display:flex; gap:8px; align-items:flex-start; }
+  .isbn-row input { flex:1; }
+  .isbn-lookup-btn {
+    padding:11px 14px; background:var(--navy); color:#fff;
+    border:none; border-radius:8px; cursor:pointer; font-size:13px;
+    font-family:'DM Sans',sans-serif; font-weight:500; white-space:nowrap;
+    transition:background 0.18s; flex-shrink:0;
+  }
+  .isbn-lookup-btn:hover { background:var(--navy-mid); }
+  .isbn-lookup-btn.loading { background:var(--ink3); cursor:wait; }
+
+  .scan-btn {
+    padding:11px 14px; background:var(--gold); color:#fff;
+    border:none; border-radius:8px; cursor:pointer; font-size:13px;
+    font-family:'DM Sans',sans-serif; font-weight:500;
+    transition:background 0.18s; flex-shrink:0;
+  }
+  .scan-btn:hover { background:var(--gold-dk); }
+
+  .isbn-result {
+    display:none; background:var(--paper); border:1px solid var(--border);
+    border-radius:10px; padding:16px; margin-top:12px;
+    align-items:center; gap:16px;
+  }
+  .isbn-result.visible { display:flex; }
+  .isbn-cover { width:70px; height:95px; object-fit:cover; border-radius:6px; border:1px solid var(--border); flex-shrink:0; }
+  .isbn-cover-placeholder { width:70px; height:95px; background:var(--navy); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+  .isbn-info-title { font-family:'Playfair Display',serif; font-size:15px; font-weight:600; margin-bottom:4px; }
+  .isbn-info-sub   { font-size:13px; color:var(--ink3); margin-bottom:8px; }
+
+  /* Scanner modal */
+  .scanner-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.85); z-index:2000;
+    align-items:center; justify-content:center; flex-direction:column;
+  }
+  .scanner-overlay.open { display:flex; }
+  .scanner-box {
+    background:#1a1a2e; border-radius:16px; padding:28px;
+    text-align:center; width:90%; max-width:460px;
+  }
+  .scanner-title { font-family:'Playfair Display',serif; font-size:22px; color:#fff; margin-bottom:6px; }
+  .scanner-sub   { font-size:13px; color:rgba(255,255,255,0.45); margin-bottom:20px; }
+  #scannerVideo  { width:100%; max-width:360px; border-radius:10px; border:2px solid var(--gold); }
+  .scanner-hint  { font-size:12px; color:rgba(255,255,255,0.35); margin-top:12px; }
+  .scanner-result { background:rgba(229,160,50,0.15); border:1px solid var(--gold); border-radius:8px; padding:10px 14px; margin-top:14px; color:var(--gold); font-size:14px; display:none; }
+  .scanner-result.visible { display:block; }
+
+  .cover-preview-wrap {
+    display:flex; gap:16px; align-items:flex-start; margin-top:10px;
+  }
+  #coverPreviewImg {
+    width:80px; height:110px; object-fit:cover;
+    border-radius:8px; border:1px solid var(--border);
+    display:none;
+  }
+</style>
+<!-- Quagga barcode scanner library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="page" style="max-width:580px;">
-  <a href="{% url 'books:book_list' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Book Catalogue</a>
+<div class="page" style="max-width:640px;">
+  <a href="{% url 'books:book_list' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Catalogue</a>
   <div class="page-title">{{ action }} Book</div>
-  <div class="page-sub">{% if action == 'Add' %}Add a new book to the library catalogue{% else %}Update book details{% endif %}</div>
+  <div class="page-sub">
+    {% if action == 'Add' %}Fill in details manually or scan a barcode to auto-fill from Google Books{% else %}Update book details{% endif %}
+  </div>
 
   <div class="card">
     <div class="card-body">
-      <form method="post">
+      <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
+        <!-- ISBN with scan + lookup -->
         <div class="form-group">
-          <label>Book Title</label>
-          <input type="text" name="title" placeholder="e.g. Introduction to Algorithms"
+          <label>ISBN <span style="color:var(--gold);">*</span>
+            {% if action == 'Add' %}<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink3);font-size:11px;margin-left:6px;">Scan or enter to auto-fill all details</span>{% endif %}
+          </label>
+          <div class="isbn-row">
+            <input type="text" name="isbn" id="isbnInput" placeholder="e.g. 9780134685991" maxlength="13"
+              value="{{ form.isbn.value|default:'' }}" autocomplete="off">
+            {% if action == 'Add' %}
+              <button type="button" class="isbn-lookup-btn" id="lookupBtn" onclick="lookupISBN()">🔍 Lookup</button>
+              <button type="button" class="scan-btn" onclick="openScanner()">📷 Scan</button>
+            {% endif %}
+          </div>
+          {% for e in form.isbn.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
+
+          <!-- ISBN lookup result preview -->
+          <div class="isbn-result" id="isbnResult">
+            <div id="isbnCoverWrap">
+              <div class="isbn-cover-placeholder" id="isbnCoverPlaceholder">📖</div>
+              <img id="isbnCoverImg" class="isbn-cover" src="" alt="" style="display:none;">
+            </div>
+            <div>
+              <div class="isbn-info-title" id="isbnTitle"></div>
+              <div class="isbn-info-sub"  id="isbnAuthor"></div>
+              <button type="button" class="btn btn-gold btn-sm" onclick="applyISBNData()">✓ Use this book</button>
+            </div>
+          </div>
+          <div id="isbnError" style="display:none;" class="field-error"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Book Title <span style="color:var(--gold);">*</span></label>
+          <input type="text" name="title" id="titleInput" placeholder="e.g. Introduction to Algorithms"
             value="{{ form.title.value|default:'' }}">
           {% for e in form.title.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
         </div>
 
         <div class="form-grid-2">
           <div class="form-group">
-            <label>Author</label>
-            <input type="text" name="author" placeholder="Author name"
+            <label>Author <span style="color:var(--gold);">*</span></label>
+            <input type="text" name="author" id="authorInput" placeholder="Author name"
               value="{{ form.author.value|default:'' }}">
             {% for e in form.author.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
           </div>
           <div class="form-group">
-            <label>ISBN (13 digits)</label>
-            <input type="text" name="isbn" placeholder="9781234567890" maxlength="13"
-              value="{{ form.isbn.value|default:'' }}">
-            {% for e in form.isbn.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
-          </div>
-        </div>
-
-        <div class="form-grid-2">
-          <div class="form-group">
-            <label>Published Date</label>
-            <input type="date" name="published_date"
+            <label>Published Date <span style="color:var(--gold);">*</span></label>
+            <input type="date" name="published_date" id="pubDateInput"
               value="{{ form.published_date.value|default:'' }}">
             {% for e in form.published_date.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
-          </div>
-          <div class="form-group">
-            <label>Quantity (copies)</label>
-            <input type="number" name="quantity" min="0" placeholder="1"
-              value="{{ form.quantity.value|default:'1' }}">
-            {% for e in form.quantity.errors %}<div class="field-error">{{ e }}</div>{% endfor %}
           </div>
         </div>
 
         <div class="form-group">
-          <label>Description <span style="color:var(--ink3);font-weight:400;text-transform:none;">(optional)</span></label>
-          <textarea name="description" rows="3" placeholder="Brief description of the book…">{{ form.description.value|default:'' }}</textarea>
+          <label>Quantity (copies)</label>
+          <input type="number" name="quantity" min="0" placeholder="1"
+            value="{{ form.quantity.value|default:'1' }}" style="max-width:160px;">
         </div>
 
-        <div style="display:flex;gap:10px;margin-top:6px;">
-          <button type="submit" class="btn btn-gold">{{ action }} Book</button>
-          <a href="{% url 'books:book_list' %}" class="btn btn-outline">Cancel</a>
+        <div class="form-group">
+          <label>Description <span style="color:var(--ink3);font-weight:400;text-transform:none;">optional</span></label>
+          <textarea name="description" id="descInput" rows="3"
+            placeholder="Brief description…">{{ form.description.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Manual cover upload -->
+        <div class="form-group">
+          <label>Cover Image <span style="color:var(--ink3);font-weight:400;text-transform:none;">optional — auto-fetched from Google Books if blank</span></label>
+          <div class="cover-preview-wrap">
+            <img id="coverPreviewImg" src="" alt="cover preview">
+            <input type="file" name="cover_image" id="coverUpload" accept="image/*"
+              onchange="previewCover(this)">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" class="btn btn-gold btn-lg">{{ action }} Book</button>
+          <a href="{% url 'books:book_list' %}" class="btn btn-outline btn-lg">Cancel</a>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<!-- BARCODE SCANNER MODAL -->
+<div class="scanner-overlay" id="scannerOverlay">
+  <div class="scanner-box">
+    <div class="scanner-title">📷 Barcode Scanner</div>
+    <p class="scanner-sub">Point your camera at the book's barcode (ISBN)</p>
+    <video id="scannerVideo" autoplay playsinline muted></video>
+    <div class="scanner-hint">Hold camera steady — detection is automatic</div>
+    <div class="scanner-result" id="scannerResult"></div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;">
+      <button class="btn btn-gold" id="scanApplyBtn" onclick="applyScanResult()" style="display:none;">✓ Use this ISBN</button>
+      <button class="btn btn-outline" onclick="closeScanner()" style="color:#fff;border-color:rgba(255,255,255,0.2);">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isbnFetchData = null;
+  let scannedISBN   = null;
+
+  // ── ISBN LOOKUP ──────────────────────────────────────────────────────────
+  async function lookupISBN() {
+    const isbn = document.getElementById('isbnInput').value.trim();
+    const btn  = document.getElementById('lookupBtn');
+    const err  = document.getElementById('isbnError');
+    err.style.display = 'none';
+    document.getElementById('isbnResult').classList.remove('visible');
+
+    if (!isbn) { showISBNError('Please enter an ISBN first.'); return; }
+
+    btn.textContent = '⌛ Searching…';
+    btn.classList.add('loading');
+    try {
+      const res  = await fetch(`{% url 'books:isbn_lookup' %}?isbn=${encodeURIComponent(isbn)}`);
+      const data = await res.json();
+      if (!res.ok) { showISBNError(data.error || 'Book not found.'); return; }
+      isbnFetchData = data;
+      showISBNResult(data);
+    } catch(e) {
+      showISBNError('Network error — check your internet connection.');
+    } finally {
+      btn.textContent = '🔍 Lookup';
+      btn.classList.remove('loading');
+    }
+  }
+
+  function showISBNError(msg) {
+    const el = document.getElementById('isbnError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function showISBNResult(data) {
+    document.getElementById('isbnTitle').textContent  = data.title;
+    document.getElementById('isbnAuthor').textContent = data.author;
+    if (data.cover) {
+      document.getElementById('isbnCoverImg').src          = data.cover;
+      document.getElementById('isbnCoverImg').style.display = 'block';
+      document.getElementById('isbnCoverPlaceholder').style.display = 'none';
+    }
+    document.getElementById('isbnResult').classList.add('visible');
+  }
+
+  function applyISBNData() {
+    if (!isbnFetchData) return;
+    document.getElementById('titleInput').value   = isbnFetchData.title;
+    document.getElementById('authorInput').value  = isbnFetchData.author;
+    document.getElementById('pubDateInput').value = isbnFetchData.published;
+    document.getElementById('descInput').value    = isbnFetchData.description;
+    document.getElementById('isbnResult').classList.remove('visible');
+    document.getElementById('isbnInput').value    = isbnFetchData.isbn;
+    // Flash success
+    document.getElementById('titleInput').style.borderColor = 'var(--success)';
+    setTimeout(() => document.getElementById('titleInput').style.borderColor = '', 1800);
+  }
+
+  // Allow pressing Enter in ISBN field to trigger lookup
+  document.getElementById('isbnInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); lookupISBN(); }
+  });
+
+  // ── COVER PREVIEW ────────────────────────────────────────────────────────
+  function previewCover(input) {
+    if (input.files && input.files[0]) {
+      const img = document.getElementById('coverPreviewImg');
+      img.src = URL.createObjectURL(input.files[0]);
+      img.style.display = 'block';
+    }
+  }
+
+  // ── BARCODE SCANNER ──────────────────────────────────────────────────────
+  let quaggaRunning = false;
+
+  function openScanner() {
+    document.getElementById('scannerOverlay').classList.add('open');
+    document.getElementById('scannerResult').classList.remove('visible');
+    document.getElementById('scanApplyBtn').style.display = 'none';
+    scannedISBN = null;
+
+    Quagga.init({
+      inputStream: {
+        name: 'Live',
+        type: 'LiveStream',
+        target: document.getElementById('scannerVideo'),
+        constraints: { facingMode: 'environment', width: 640, height: 480 },
+      },
+      decoder: {
+        readers: ['ean_reader', 'ean_8_reader', 'code_128_reader'],
+      },
+    }, function(err) {
+      if (err) {
+        document.getElementById('scannerResult').textContent = '⚠️ Camera access denied or unavailable.';
+        document.getElementById('scannerResult').classList.add('visible');
+        return;
+      }
+      Quagga.start();
+      quaggaRunning = true;
+    });
+
+    Quagga.onDetected(function(result) {
+      const code = result.codeResult.code;
+      if (code && (code.length === 13 || code.length === 10)) {
+        scannedISBN = code;
+        const el = document.getElementById('scannerResult');
+        el.textContent = `✓ ISBN detected: ${code}`;
+        el.classList.add('visible');
+        document.getElementById('scanApplyBtn').style.display = 'inline-flex';
+        Quagga.stop();
+        quaggaRunning = false;
+      }
+    });
+  }
+
+  function closeScanner() {
+    if (quaggaRunning) { Quagga.stop(); quaggaRunning = false; }
+    document.getElementById('scannerOverlay').classList.remove('open');
+  }
+
+  function applyScanResult() {
+    if (!scannedISBN) return;
+    document.getElementById('isbnInput').value = scannedISBN;
+    closeScanner();
+    lookupISBN();   // auto-lookup after scan
+  }
+</script>
 {% endblock %}

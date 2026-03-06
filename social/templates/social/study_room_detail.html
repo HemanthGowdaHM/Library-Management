@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block title %}{{ room.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .room-layout { display:grid; grid-template-columns:1fr 280px; gap:24px; align-items:start; }
+  .room-header-bar { background:linear-gradient(135deg,var(--navy),var(--navy-deep)); border-radius:var(--radius); padding:24px 28px; margin-bottom:24px; position:relative; overflow:hidden; }
+  .room-header-bar::before { content:''; position:absolute; top:-40px; right:-40px; width:160px; height:160px; background:radial-gradient(circle,rgba(229,160,50,0.2),transparent 65%); border-radius:50%; }
+  .room-name-h { font-family:'Playfair Display',serif; font-size:26px; color:#fff; margin-bottom:4px; }
+  .room-meta   { font-size:13px; color:rgba(255,255,255,0.45); display:flex; gap:14px; flex-wrap:wrap; }
+
+  /* Notes */
+  .note-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:12px; transition:box-shadow 0.18s; }
+  .note-card:hover { box-shadow:var(--shadow-lg); }
+  .note-card.pinned { border-color:var(--gold); background:var(--gold-lt); }
+  .note-top  { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .note-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-deep)); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--gold); flex-shrink:0; }
+  .note-author { font-weight:600; font-size:13px; }
+  .note-time   { font-size:11px; color:var(--ink3); margin-left:auto; }
+  .note-body   { font-size:14px; color:var(--ink2); line-height:1.75; white-space:pre-wrap; }
+  .note-footer { display:flex; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); flex-wrap:wrap; }
+  .like-btn { display:flex; align-items:center; gap:5px; background:none; border:1.5px solid var(--border); border-radius:7px; padding:4px 10px; cursor:pointer; font-size:12px; font-family:'DM Sans',sans-serif; color:var(--ink3); transition:all 0.15s; }
+  .like-btn:hover, .like-btn.liked { border-color:var(--gold); color:var(--gold); background:var(--gold-lt); }
+  .pin-badge { background:var(--gold); color:#fff; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:700; }
+
+  /* Compose area */
+  .compose-box { position:sticky; bottom:20px; }
+  .compose-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow:var(--shadow-lg); overflow:hidden; }
+  .compose-textarea { width:100%; padding:14px 16px; border:none; outline:none; font-family:'DM Sans',sans-serif; font-size:14px; color:var(--ink); resize:vertical; min-height:90px; box-shadow:none !important; }
+  .compose-footer { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-top:1px solid var(--border); background:var(--paper); }
+  .char-count { font-size:12px; color:var(--ink3); }
+
+  /* Sidebar */
+  .sidebar-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+  .sidebar-title { font-weight:600; font-size:14px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .member-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); }
+  .member-row:last-child { border-bottom:none; }
+  .mem-avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-deep)); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--gold); flex-shrink:0; }
+  .mem-name   { font-size:13px; font-weight:500; }
+  .mem-role   { font-size:11px; color:var(--ink3); }
+  .owner-star { color:var(--gold); font-size:13px; margin-left:auto; }
+
+  @media(max-width:720px) { .room-layout { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <a href="{% url 'social:study_rooms' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Study Rooms</a>
+
+  <!-- Room header -->
+  <div class="room-header-bar">
+    <div style="position:relative;z-index:1;">
+      <div class="room-name-h">{{ room.name }}</div>
+      <div class="room-meta">
+        {% if room.book %}<span>📚 {{ room.book.title }}</span>{% endif %}
+        <span>👥 {{ member_count }} member{{ member_count|pluralize }}</span>
+        <span>📝 {{ notes.count }} note{{ notes.count|pluralize }}</span>
+        <span>Created by {{ room.created_by.get_full_name|default:room.created_by.username }}</span>
+        {% if room.is_private %}<span>🔒 Private</span>{% endif %}
+      </div>
+      {% if room.description %}<div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:10px;">{{ room.description }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="room-layout">
+
+    <!-- NOTES FEED -->
+    <div>
+      {% if notes %}
+        {% for note in notes %}
+        <div class="note-card {% if note.is_pinned %}pinned{% endif %}">
+          <div class="note-top">
+            <div class="note-avatar">{{ note.author.first_name.0|default:note.author.username.0|upper }}</div>
+            <div>
+              <div class="note-author">{{ note.author.get_full_name|default:note.author.username }}</div>
+              <div style="font-size:11px;color:var(--ink3);">{{ note.author.get_role_display }}</div>
+            </div>
+            {% if note.is_pinned %}<span class="pin-badge">📌 Pinned</span>{% endif %}
+            <span class="note-time">{{ note.created|date:"d M, H:i" }}</span>
+          </div>
+          <div class="note-body">{{ note.body }}</div>
+          <div class="note-footer">
+            {% if is_member %}
+            <button class="like-btn {% if request.user in note.likes.all %}liked{% endif %}"
+              onclick="likeNote({{ note.pk }}, this)">
+              👍 <span class="nc">{{ note.like_count }}</span>
+            </button>
+            {% endif %}
+            {% if note.author == request.user or is_owner %}
+              <a href="{% url 'social:pin_note' note.pk %}" class="btn btn-outline btn-sm" style="font-size:11px;">
+                {% if note.is_pinned %}Unpin{% else %}📌 Pin{% endif %}
+              </a>
+              <a href="{% url 'social:delete_note' note.pk %}" style="color:var(--danger);font-size:12px;margin-left:auto;" onclick="return confirm('Delete note?')">Delete</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="card" style="padding:48px;text-align:center;margin-bottom:20px;">
+          <div style="font-size:48px;margin-bottom:12px;">📝</div>
+          <p style="color:var(--ink3);">No notes yet.{% if is_member %} Be the first to share something!{% endif %}</p>
+        </div>
+      {% endif %}
+
+      <!-- Compose -->
+      {% if is_member %}
+      <div class="compose-box">
+        <div class="compose-card">
+          <form method="post">
+            {% csrf_token %}
+            <textarea class="compose-textarea" name="body" placeholder="Share a note, key insight, or question with the group…" maxlength="2000" id="noteBody" oninput="updateCount(this)"></textarea>
+            <div class="compose-footer">
+              <span class="char-count"><span id="charCount">0</span> / 2000</span>
+              <button type="submit" class="btn btn-gold btn-sm">Share Note →</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      {% else %}
+        <div class="card" style="padding:20px;text-align:center;">
+          <p style="color:var(--ink3);margin-bottom:12px;">Join this room to share notes.</p>
+          <a href="{% url 'social:join_study_room' room.pk %}" class="btn btn-gold">Join Room</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- SIDEBAR -->
+    <div>
+      {% if is_member and not is_owner %}
+      <a href="{% url 'social:leave_study_room' room.pk %}" class="btn btn-outline btn-block" style="margin-bottom:16px;color:var(--danger);" onclick="return confirm('Leave this room?')">Leave Room</a>
+      {% endif %}
+      {% if is_owner %}
+      <form method="post" action="{% url 'social:delete_study_room' room.pk %}" style="margin-bottom:12px;">
+        {% csrf_token %}
+        <button class="btn btn-danger btn-block" onclick="return confirm('Delete this room? This will remove all notes.')">Delete Room</button>
+      </form>
+      {% endif %}
+
+      <div class="sidebar-card">
+        <div class="sidebar-title">👥 Members ({{ member_count }})</div>
+        {% for member in room.members.all %}
+        <div class="member-row">
+          <div class="mem-avatar">{{ member.first_name.0|default:member.username.0|upper }}</div>
+          <div>
+            <div class="mem-name">{{ member.get_full_name|default:member.username }}</div>
+            <div class="mem-role">{{ member.get_role_display }}</div>
+          </div>
+          {% if member == room.created_by %}<span class="owner-star" title="Room owner">★</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if room.book %}
+      <div class="sidebar-card">
+        <div class="sidebar-title">📚 Book</div>
+        {% if room.book.cover %}<img src="{{ room.book.cover }}" style="width:100%;max-width:120px;border-radius:8px;margin-bottom:10px;">{% endif %}
+        <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:600;margin-bottom:3px;">{{ room.book.title }}</div>
+        <div style="font-size:13px;color:var(--ink3);margin-bottom:10px;">{{ room.book.author }}</div>
+        <a href="{% url 'books:book_detail' room.book.pk %}" class="btn btn-outline btn-sm btn-block">View Book</a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function updateCount(el) {
+    document.getElementById('charCount').textContent = el.value.length;
+  }
+
+  async function likeNote(pk, btn) {
+    const res  = await fetch(`/social/study-rooms/notes/${pk}/like/`, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+    const data = await res.json();
+    btn.querySelector('.nc').textContent = data.count;
+    btn.classList.toggle('liked', data.liked);
+  }
+</script>
+{% endblock %}

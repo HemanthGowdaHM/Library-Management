@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Create Reading List{% endblock %}
+{% block content %}
+<div class="page" style="max-width:540px;">
+  <a href="{% url 'social:reading_lists' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Reading Lists</a>
+  <div class="page-title">New Reading List</div>
+  <div class="page-sub">Create a curated collection of books to share with others</div>
+  <div class="card" style="margin-top:20px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>List Title <span style="color:var(--gold);">*</span></label>
+          <input type="text" name="title" placeholder="e.g. Best Python Books, Must-read Classics…" maxlength="120" required>
+        </div>
+        <div class="form-group">
+          <label>Description <span style="color:var(--ink3);font-weight:400;">optional</span></label>
+          <textarea name="description" rows="3" placeholder="What's this list about?" maxlength="500"></textarea>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+            <input type="checkbox" name="is_public" checked style="width:16px;height:16px;accent-color:var(--gold);">
+            Make this list public (visible to all members)
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" class="btn btn-gold">Create List</button>
+          <a href="{% url 'social:reading_lists' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

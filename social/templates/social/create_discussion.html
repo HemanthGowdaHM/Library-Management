@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Start Discussion{% endblock %}
+{% block content %}
+<div class="page" style="max-width:580px;">
+  {% if book %}
+    <a href="{% url 'social:book_discussions' book.pk %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Discussions</a>
+  {% else %}
+    <a href="{% url 'social:discussions' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Discussions</a>
+  {% endif %}
+  <div class="page-title">Start a Discussion</div>
+  {% if book %}<div class="page-sub">About <em>{{ book.title }}</em></div>{% endif %}
+  <div class="card" style="margin-top:20px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Discussion Title <span style="color:var(--gold);">*</span></label>
+          <input type="text" name="title" placeholder="e.g. Chapter 3 confusing — need help, Best quotes from this book…" maxlength="200" required>
+        </div>
+        <div class="form-group">
+          <label>Your Message <span style="color:var(--gold);">*</span></label>
+          <textarea name="body" rows="6" placeholder="Start the conversation…" maxlength="2000" required></textarea>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-gold">Post Discussion</button>
+          <a href="{% if book %}{% url 'social:book_discussions' book.pk %}{% else %}{% url 'social:discussions' %}{% endif %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

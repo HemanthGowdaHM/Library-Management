@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load social_tags %}
+{% block title %}Reviews — {{ book.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .review-layout { display:grid; grid-template-columns:300px 1fr; gap:24px; align-items:start; }
+
+  .rating-panel {
+    background:linear-gradient(160deg,var(--navy),var(--navy-deep));
+    border-radius:var(--radius); padding:28px; position:sticky; top:80px;
+    box-shadow:var(--shadow-lg);
+  }
+  .big-rating { font-family:'Playfair Display',serif; font-size:64px; font-weight:700; color:var(--gold); line-height:1; }
+  .rating-label { color:rgba(255,255,255,0.4); font-size:12px; margin-top:4px; }
+  .stars-display { display:flex; gap:4px; margin:12px 0; }
+  .star { font-size:24px; }
+  .star.filled { color:var(--gold); }
+  .star.empty  { color:rgba(255,255,255,0.15); }
+
+  .bar-row   { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .bar-label { color:rgba(255,255,255,0.5); font-size:12px; width:14px; }
+  .bar-track { flex:1; background:rgba(255,255,255,0.08); border-radius:4px; height:8px; overflow:hidden; }
+  .bar-fill  { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold-dk)); border-radius:4px; }
+  .bar-count { color:rgba(255,255,255,0.3); font-size:11px; width:18px; text-align:right; }
+
+  .write-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:24px; }
+  .write-header { background:var(--paper); padding:14px 20px; border-bottom:1px solid var(--border); font-weight:600; font-size:14px; }
+  .write-body { padding:20px; }
+
+  /* CSS-only star picker (reverse order trick) */
+  .star-picker { display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:4px; margin-bottom:16px; }
+  .star-picker input { display:none; }
+  .star-picker label { font-size:32px; cursor:pointer; color:rgba(0,0,0,0.12); transition:color 0.12s, transform 0.1s; user-select:none; }
+  .star-picker label:hover,
+  .star-picker label:hover ~ label { color:#e5a032; transform:scale(1.15); }
+  .star-picker input:checked ~ label { color:#e5a032; }
+
+  .review-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow); transition:box-shadow 0.2s; }
+  .review-card:hover { box-shadow:var(--shadow-lg); }
+  .review-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .reviewer { display:flex; align-items:center; gap:10px; }
+  .reviewer-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-deep)); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--gold); flex-shrink:0; }
+  .reviewer-name { font-weight:600; font-size:14px; }
+  .reviewer-meta { font-size:11px; color:var(--ink3); margin-top:2px; }
+  .review-title { font-family:'Playfair Display',serif; font-size:16px; font-weight:600; margin-bottom:6px; }
+  .review-body  { font-size:14px; color:var(--ink2); line-height:1.7; }
+  .review-footer { display:flex; align-items:center; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
+  .like-btn { display:flex; align-items:center; gap:6px; background:none; border:1.5px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; font-size:13px; font-weight:500; font-family:'DM Sans',sans-serif; color:var(--ink3); transition:all 0.18s; }
+  .like-btn:hover, .like-btn.liked { border-color:var(--gold); color:var(--gold); background:var(--gold-lt); }
+  .my-badge { background:var(--gold-lt); border:1px solid var(--gold-bd); color:var(--warn); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; margin-left:6px; }
+
+  @media(max-width:700px) { .review-layout { grid-template-columns:1fr; } .rating-panel { position:static; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:960px;">
+  <a href="{% url 'books:book_detail' book.pk %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← {{ book.title }}</a>
+  <div class="page-title">Reviews & Ratings</div>
+  <div class="page-sub">{{ total_reviews }} review{{ total_reviews|pluralize }} for <em>{{ book.title }}</em></div>
+
+  <div class="review-layout">
+
+    <!-- LEFT: Rating summary + write form -->
+    <div>
+      <div class="rating-panel" style="margin-bottom:20px;">
+        <div class="big-rating">{{ avg_rating }}</div>
+        <div class="stars-display">
+          {% for i in "12345" %}
+            <span class="star {% if forloop.counter <= avg_rating %}filled{% else %}empty{% endif %}">★</span>
+          {% endfor %}
+        </div>
+        <div class="rating-label">{{ total_reviews }} review{{ total_reviews|pluralize }}</div>
+        <div style="margin-top:16px;">
+          {% for star in "54321" %}
+            <div class="bar-row">
+              <span class="bar-label">{{ star }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:{% if total_reviews %}{% widthratio rating_counts|get_item:star total_reviews 100 %}{% else %}0{% endif %}%"></div>
+              </div>
+              <span class="bar-count">{{ rating_counts|get_item:star }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if not my_review %}
+      <div class="write-card">
+        <div class="write-header">✍️ Write a Review</div>
+        <div class="write-body">
+          <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+              <label>Your Rating <span style="color:var(--gold);">*</span></label>
+              <div class="star-picker">
+                <input type="radio" name="rating" id="s5" value="5" required><label for="s5">★</label>
+                <input type="radio" name="rating" id="s4" value="4"><label for="s4">★</label>
+                <input type="radio" name="rating" id="s3" value="3"><label for="s3">★</label>
+                <input type="radio" name="rating" id="s2" value="2"><label for="s2">★</label>
+                <input type="radio" name="rating" id="s1" value="1"><label for="s1">★</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Review Title <span style="color:var(--ink3);font-weight:400;">(optional)</span></label>
+              <input type="text" name="title" placeholder="e.g. A must-read for CS students" maxlength="120">
+            </div>
+            <div class="form-group">
+              <label>Your Review <span style="color:var(--gold);">*</span></label>
+              <textarea name="body" rows="4" placeholder="Share your thoughts…" maxlength="1000" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-gold">Post Review</button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="card" style="padding:16px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:28px;margin-bottom:6px;">✅</div>
+        <div style="font-size:14px;color:var(--ink3);">You've already reviewed this book.</div>
+        <a href="{% url 'social:delete_review' my_review.pk %}" class="btn btn-sm" style="margin-top:10px;background:#fdf0ef;color:var(--danger);border:1.5px solid #f0b8b3;" onclick="return confirm('Delete your review?')">Delete my review</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: Reviews list -->
+    <div>
+      {% for review in reviews %}
+      <div class="review-card">
+        <div class="review-top">
+          <div class="reviewer">
+            <div class="reviewer-avatar">{{ review.user.first_name.0|default:review.user.username.0|upper }}</div>
+            <div>
+              <div class="reviewer-name">
+                {{ review.user.get_full_name|default:review.user.username }}
+                {% if review.user == request.user %}<span class="my-badge">You</span>{% endif %}
+              </div>
+              <div class="reviewer-meta">{{ review.created|date:"d M Y" }} · {{ review.user.get_role_display }}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:2px;">
+            {% for i in "12345" %}
+              <span style="font-size:14px;color:{% if forloop.counter <= review.rating %}#e5a032{% else %}#ddd{% endif %};">★</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% if review.title %}<div class="review-title">{{ review.title }}</div>{% endif %}
+        <div class="review-body">{{ review.body }}</div>
+
+        <div class="review-footer">
+          {# ✅ Use liked_review_ids set — no DB query, no prefetch needed #}
+          <button class="like-btn {% if review.pk in liked_review_ids %}liked{% endif %}"
+            onclick="likeReview({{ review.pk }}, this)">
+            👍 <span class="like-count">{{ review.like_count }}</span>
+          </button>
+          {% if review.user == request.user %}
+            <a href="{% url 'social:delete_review' review.pk %}"
+               style="color:var(--danger);font-size:13px;margin-left:auto;"
+               onclick="return confirm('Delete your review?')">Delete</a>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="card" style="padding:48px 20px;text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">📝</div>
+        <p style="color:var(--ink3);">No reviews yet. Be the first to review this book!</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+<script>
+  async function likeReview(pk, btn) {
+    const res  = await fetch(`/social/reviews/${pk}/like/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    });
+    const data = await res.json();
+    btn.querySelector('.like-count').textContent = data.count;
+    btn.classList.toggle('liked', data.liked);
+  }
+</script>
+{% endblock %}

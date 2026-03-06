@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}{{ lst.title }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:900px;">
+  <a href="{% url 'social:reading_lists' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Reading Lists</a>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      <div class="page-title">{{ lst.title }}</div>
+      <div class="page-sub" style="display:flex;gap:12px;flex-wrap:wrap;">
+        <span>👤 {{ lst.owner.get_full_name|default:lst.owner.username }}</span>
+        <span>📚 {{ lst.book_count }} book{{ lst.book_count|pluralize }}</span>
+        <span>{% if lst.is_public %}🌐 Public{% else %}🔒 Private{% endif %}</span>
+        <span>Updated {{ lst.updated|date:"d M Y" }}</span>
+      </div>
+      {% if lst.description %}<p style="margin-top:10px;color:var(--ink2);font-size:14px;line-height:1.6;">{{ lst.description }}</p>{% endif %}
+    </div>
+    {% if is_owner %}
+    <form method="post" action="{% url 'social:delete_reading_list' lst.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline btn-sm" style="color:var(--danger);" onclick="return confirm('Delete this list?')">Delete List</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Add book form (owner only) -->
+  {% if is_owner and all_books %}
+  <div class="card" style="padding:16px 20px;margin-bottom:24px;">
+    <form method="post" action="{% url 'social:add_book_to_list' lst.pk %}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      {% csrf_token %}
+      <select name="book_id" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+        <option value="">— Select a book to add —</option>
+        {% for b in all_books %}
+        <option value="{{ b.pk }}">{{ b.title }} — {{ b.author }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-gold btn-sm">+ Add Book</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Book grid -->
+  {% if books %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;">
+    {% for book in books %}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <a href="{% url 'books:book_detail' book.pk %}">
+        {% if book.cover %}
+          <img src="{{ book.cover }}" alt="{{ book.title }}" style="width:100%;height:200px;object-fit:cover;">
+        {% else %}
+          <div style="width:100%;height:200px;background:linear-gradient(135deg,var(--navy),var(--navy-deep));display:flex;align-items:center;justify-content:center;font-size:40px;">📖</div>
+        {% endif %}
+      </a>
+      <div style="padding:12px;">
+        <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;margin-bottom:3px;">{{ book.title|truncatechars:40 }}</div>
+        <div style="font-size:12px;color:var(--ink3);">{{ book.author }}</div>
+        {% if is_owner %}
+        <form method="post" action="{% url 'social:remove_book_from_list' lst.pk book.pk %}" style="margin-top:10px;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm" style="width:100%;background:#fdf0ef;color:var(--danger);border:1.5px solid #f0b8b3;">Remove</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:48px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">📭</div>
+    <p style="color:var(--ink3);">{% if is_owner %}No books added yet. Use the dropdown above to add books.{% else %}This list has no books yet.{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

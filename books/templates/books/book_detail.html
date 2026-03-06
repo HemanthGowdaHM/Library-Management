@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}{{ book.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .detail-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .cover-col { position: sticky; top: 80px; }
+
+  .book-cover-lg {
+    width: 100%; aspect-ratio: 2/3; object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(26,26,46,0.25);
+    border: 1px solid var(--border);
+  }
+  .cover-placeholder-lg {
+    width: 100%; aspect-ratio: 2/3;
+    background: linear-gradient(160deg, var(--navy), var(--navy-deep));
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.25); gap: 12px;
+    box-shadow: 0 12px 40px rgba(26,26,46,0.25);
+  }
+  .cover-placeholder-lg .icon { font-size: 52px; }
+  .cover-placeholder-lg .ph-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; color: rgba(255,255,255,0.45);
+    text-align: center; padding: 0 16px;
+  }
+
+  .qr-small {
+    margin-top: 14px; text-align: center;
+  }
+  .qr-small img {
+    width: 100px; height: 100px; border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .qr-small .qr-label {
+    font-size: 11px; color: var(--ink3); margin-top: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .book-title-lg {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px; font-weight: 700; color: var(--ink);
+    line-height: 1.2; margin-bottom: 6px;
+  }
+  .book-author-lg {
+    font-size: 16px; color: var(--ink3); margin-bottom: 16px;
+  }
+
+  .meta-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .meta-chip {
+    background: var(--paper); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 12px;
+    font-size: 12px; color: var(--ink3);
+  }
+  .meta-chip strong { color: var(--ink); }
+
+  .avail-banner {
+    border-radius: 10px; padding: 14px 18px;
+    margin-bottom: 20px; font-size: 14px; font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .avail-ok  { background: #edf7f1; color: var(--success); border: 1px solid #a3d9b8; }
+  .avail-low { background: var(--gold-lt); color: var(--warn); border: 1px solid var(--gold-bd); }
+  .avail-out { background: #fdf0ef; color: var(--danger); border: 1px solid #f0b8b3; }
+
+  .reserve-banner {
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+    font-size: 13.5px; color: #1d4ed8;
+  }
+
+  .desc-section { margin-bottom: 24px; }
+  .desc-section h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px; font-weight: 600; color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .desc-text { font-size: 14px; color: var(--ink2); line-height: 1.75; }
+
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  @media(max-width: 680px) {
+    .detail-layout { grid-template-columns: 1fr; }
+    .cover-col { position: static; display: flex; gap: 20px; align-items: flex-start; }
+    .cover-col .book-cover-lg, .cover-col .cover-placeholder-lg { max-width: 140px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page" style="max-width:900px;">
+  <a href="{% url 'books:book_list' %}" class="btn btn-outline btn-sm" style="margin-bottom:24px;">← Catalogue</a>
+
+  <div class="detail-layout">
+
+    <!-- COVER COL -->
+    <div class="cover-col">
+      {% if book.cover %}
+        <img src="{{ book.cover }}" alt="{{ book.title }}" class="book-cover-lg"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+        <div class="cover-placeholder-lg" style="display:none;">
+          <span class="icon">📖</span>
+          <span class="ph-title">{{ book.title }}</span>
+        </div>
+      {% else %}
+        <div class="cover-placeholder-lg">
+          <span class="icon">📖</span>
+          <span class="ph-title">{{ book.title }}</span>
+        </div>
+      {% endif %}
+
+      {% if book.qr_code %}
+      <div class="qr-small">
+        <img src="{{ book.qr_code.url }}" alt="QR Code">
+        <div class="qr-label">Scan to view</div>
+        <a href="{{ book.qr_code.url }}" class="btn btn-outline btn-sm" style="margin-top:8px;width:100%;justify-content:center;" download="qr_{{ book.isbn }}.png">⬇ Download QR</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- DETAIL COL -->
+    <div>
+      <div class="book-title-lg">{{ book.title }}</div>
+      <div class="book-author-lg">by {{ book.author }}</div>
+
+      <div class="meta-chips">
+        <span class="meta-chip">ISBN <strong>{{ book.isbn }}</strong></span>
+        <span class="meta-chip">Published <strong>{{ book.published_date|date:"Y" }}</strong></span>
+        <span class="meta-chip"><strong>{{ book.quantity }}</strong> cop{{ book.quantity|pluralize:"y,ies" }}</span>
+        {% if book.added_by %}
+          <span class="meta-chip">Added by <strong>{{ book.added_by.get_full_name|default:book.added_by.username }}</strong></span>
+        {% endif %}
+      </div>
+
+      <!-- Availability banner -->
+      {% if book.quantity == 0 %}
+        <div class="avail-banner avail-out">
+          ❌ Currently out of stock — all copies are borrowed
+        </div>
+      {% elif book.quantity <= 2 %}
+        <div class="avail-banner avail-low">
+          ⚠️ Only {{ book.quantity }} cop{{ book.quantity|pluralize:"y,ies" }} left — borrow soon!
+        </div>
+      {% else %}
+        <div class="avail-banner avail-ok">
+          ✓ {{ book.quantity }} cop{{ book.quantity|pluralize:"y,ies" }} available
+        </div>
+      {% endif %}
+
+      <!-- Reservation status for current user -->
+      {% if user_reservation %}
+        <div class="reserve-banner">
+          🔖 You have reserved this book — you are <strong>#{{ user_reservation.queue_position }}</strong> in the queue.
+          {% if user_reservation.status == 'NOTIFIED' %}
+            <br><strong style="color:var(--success);">✓ The book is ready for you! Collect it within 48 hours.</strong>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Queue info for out of stock -->
+      {% if not book.is_available and queue_count > 0 %}
+        <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">
+          {{ queue_count }} person{{ queue_count|pluralize }} in the waiting queue
+        </div>
+      {% endif %}
+
+      <!-- Description -->
+      {% if book.description %}
+      <div class="desc-section">
+        <h3>About this Book</h3>
+        <div class="desc-text">{{ book.description }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Actions -->
+      <div class="action-row">
+        {% if can_manage %}
+          <a href="{% url 'accounts:issue_book' %}" class="btn btn-gold">📤 Issue this Book</a>
+          <a href="{% url 'books:edit_book' book.pk %}" class="btn btn-primary">Edit</a>
+          <a href="{% url 'books:delete_book' book.pk %}" class="btn btn-outline" style="color:var(--danger);border-color:#f0b8b3;">Delete</a>
+          <a href="{% url 'social:book_reviews' book.pk %}" class="btn btn-outline">⭐ Reviews ({{ book.reviews.count }})</a>
+          <a href="{% url 'social:book_discussions' book.pk %}" class="btn btn-outline">💬 Discuss</a>
+
+        {% else %}
+          {% if not book.is_available and not user_reservation %}
+            <a href="{% url 'books:reserve_book' book.pk %}" class="btn btn-gold">🔖 Reserve this Book</a>
+          {% endif %}
+          {% if user_reservation %}
+            <a href="{% url 'books:cancel_reservation' user_reservation.pk %}" class="btn btn-outline" style="color:var(--danger);">Cancel Reservation</a>
+          {% endif %}
+        {% endif %}
+        <a href="{% url 'books:book_list' %}" class="btn btn-outline">← Back to Catalogue</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

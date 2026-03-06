@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}All Reservations{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-title">Reservation Queue</div>
+  <div class="page-sub">Members waiting for books to become available</div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Book</th><th>Member</th><th>Queue #</th><th>Status</th><th>Waiting Since</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for r in reservations %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                {% if r.book.cover %}<img src="{{ r.book.cover }}" style="width:32px;height:44px;object-fit:cover;border-radius:4px;">{% endif %}
+                <div>
+                  <div style="font-weight:500;font-size:14px;">{{ r.book.title|truncatechars:30 }}</div>
+                  <div style="font-size:11px;color:var(--ink3);">{{ r.book.quantity }} copies available</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-weight:500;">{{ r.user.get_full_name|default:r.user.username }}</div>
+              <div style="font-size:12px;color:var(--ink3);">{{ r.user.get_role_display }}{% if r.user.student_id %} · {{ r.user.student_id }}{% endif %}</div>
+            </td>
+            <td>
+              <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--gold);">#{{ r.queue_position }}</span>
+            </td>
+            <td>
+              <span class="badge {% if r.status == 'NOTIFIED' %}badge-green{% else %}badge-gold{% endif %}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.created_at|date:"d M Y" }}</td>
+            <td>
+              {% if r.status == 'PENDING' and r.book.quantity > 0 %}
+                <form method="post" action="{% url 'books:notify_reservation' r.pk %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-sm">📢 Notify</button>
+                </form>
+              {% else %}
+                <span style="color:var(--ink3);font-size:13px;">{% if r.book.quantity == 0 %}Out of stock{% else %}Notified{% endif %}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><div class="empty"><div class="empty-icon">✅</div><p>No active reservations.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

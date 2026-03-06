@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Discussions{% endblock %}
+{% block extra_head %}
+<style>
+  .thread-card {
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:12px; box-shadow:var(--shadow);
+    transition:all 0.2s; display:flex; gap:16px; align-items:flex-start;
+  }
+  .thread-card:hover { box-shadow:var(--shadow-lg); transform:translateX(2px); }
+  .thread-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-deep)); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:var(--gold); flex-shrink:0; }
+  .thread-main { flex:1; min-width:0; }
+  .thread-title { font-family:'Playfair Display',serif; font-size:16px; font-weight:600; color:var(--ink); text-decoration:none; }
+  .thread-title:hover { color:var(--gold); }
+  .thread-meta  { font-size:12px; color:var(--ink3); margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; }
+  .thread-body  { font-size:13.5px; color:var(--ink2); line-height:1.6; margin-top:6px; }
+  .thread-stats { display:flex; gap:14px; margin-top:10px; }
+  .thread-stat  { font-size:12px; color:var(--ink3); display:flex; align-items:center; gap:4px; }
+  .pin-badge    { background:var(--gold-lt); border:1px solid var(--gold-bd); color:var(--warn); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page" style="max-width:860px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      {% if book %}
+        <a href="{% url 'books:book_detail' book.pk %}" class="btn btn-outline btn-sm" style="margin-bottom:12px;">← {{ book.title }}</a>
+        <div class="page-title">Discussions</div>
+        <div class="page-sub">{{ threads.count }} thread{{ threads.count|pluralize }} about <em>{{ book.title }}</em></div>
+      {% else %}
+        <div class="page-title">All Discussions</div>
+        <div class="page-sub">{{ threads.count }} discussion{{ threads.count|pluralize }} across the library</div>
+      {% endif %}
+    </div>
+    {% if book %}
+      <a href="{% url 'social:create_book_discussion' book_pk=book.pk %}" class="btn btn-gold">+ Start Discussion</a>
+    {% else %}
+      <a href="{% url 'social:create_discussion' %}" class="btn btn-gold">+ Start Discussion</a>
+    {% endif %}
+  </div>
+
+  {% for thread in threads %}
+  <div class="thread-card">
+    <div class="thread-avatar">{{ thread.author.first_name.0|default:thread.author.username.0|upper }}</div>
+    <div class="thread-main">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <a href="{% url 'social:discussion_detail' thread.pk %}" class="thread-title">{{ thread.title }}</a>
+        {% if thread.is_pinned %}<span class="pin-badge">📌 Pinned</span>{% endif %}
+      </div>
+      <div class="thread-meta">
+        <span>{{ thread.author.get_full_name|default:thread.author.username }}</span>
+        <span>{{ thread.created|date:"d M Y" }}</span>
+        {% if thread.book %}<span>📚 {{ thread.book.title|truncatechars:30 }}</span>{% endif %}
+      </div>
+      <div class="thread-body">{{ thread.body|truncatechars:160 }}</div>
+      <div class="thread-stats">
+        <span class="thread-stat">💬 {{ thread.reply_count }} repl{{ thread.reply_count|pluralize:"y,ies" }}</span>
+        <span class="thread-stat">👁 {{ thread.views }}</span>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card" style="padding:48px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;">💬</div>
+    <p style="color:var(--ink3);">No discussions yet. Be the first to start a conversation!</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

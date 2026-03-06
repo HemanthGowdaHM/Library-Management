@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Reserve Book{% endblock %}
+{% block content %}
+<div class="page" style="max-width:500px;">
+  <a href="{% url 'books:book_detail' book.pk %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Back</a>
+  <div class="card">
+    <div style="background:linear-gradient(135deg,var(--navy),var(--navy-deep));padding:24px 28px;border-radius:var(--radius) var(--radius) 0 0;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;">Book Reservation</div>
+      {% if book.cover %}<img src="{{ book.cover }}" style="width:70px;height:95px;object-fit:cover;border-radius:6px;border:2px solid rgba(229,160,50,0.4);margin-bottom:12px;">{% endif %}
+      <div style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">{{ book.title }}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px;">by {{ book.author }}</div>
+    </div>
+    <div class="card-body">
+      <div style="background:var(--gold-lt);border:1px solid var(--gold-bd);border-radius:10px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:13px;color:var(--warn);line-height:1.6;">
+          📋 This book is currently <strong>out of stock</strong>.<br>
+          You will be <strong>#{{ queue_position }}</strong> in the waiting queue.<br>
+          We'll notify you as soon as it becomes available.
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-gold">🔖 Confirm Reservation</button>
+          <a href="{% url 'books:book_detail' book.pk %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

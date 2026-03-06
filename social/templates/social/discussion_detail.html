@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}{{ thread.title }}{% endblock %}
+{% block extra_head %}
+<style>
+  .reply-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin-bottom:12px; display:flex; gap:14px; }
+  .reply-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-deep)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--gold); flex-shrink:0; }
+  .reply-body-text { font-size:14px; color:var(--ink2); line-height:1.7; flex:1; }
+  .reply-meta { font-size:12px; color:var(--ink3); margin-bottom:6px; display:flex; gap:8px; }
+  .reply-footer { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .like-btn { display:flex; align-items:center; gap:5px; background:none; border:1.5px solid var(--border); border-radius:7px; padding:4px 10px; cursor:pointer; font-size:12px; font-weight:500; font-family:'DM Sans',sans-serif; color:var(--ink3); transition:all 0.15s; }
+  .like-btn:hover, .like-btn.liked { border-color:var(--gold); color:var(--gold); background:var(--gold-lt); }
+  .op-badge { background:linear-gradient(135deg,var(--navy),var(--navy-deep)); color:var(--gold); border-radius:6px; padding:2px 7px; font-size:10px; font-weight:700; }
+
+  .thread-op { background:linear-gradient(160deg,var(--navy),var(--navy-deep)); border-radius:var(--radius); padding:24px 28px; margin-bottom:24px; }
+  .thread-op-title { font-family:'Playfair Display',serif; font-size:24px; color:#fff; margin-bottom:8px; }
+  .thread-op-meta  { font-size:12px; color:rgba(255,255,255,0.4); display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .thread-op-body  { font-size:14px; color:rgba(255,255,255,0.7); line-height:1.75; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page" style="max-width:800px;">
+  {% if thread.book %}
+    <a href="{% url 'social:book_discussions' thread.book.pk %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Discussions</a>
+  {% else %}
+    <a href="{% url 'social:discussions' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Discussions</a>
+  {% endif %}
+
+  <!-- Original post -->
+  <div class="thread-op">
+    {% if thread.is_pinned %}<span style="background:rgba(229,160,50,0.2);border:1px solid rgba(229,160,50,0.4);color:var(--gold);border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;margin-bottom:10px;display:inline-block;">📌 Pinned</span>{% endif %}
+    <div class="thread-op-title">{{ thread.title }}</div>
+    <div class="thread-op-meta">
+      <span>{{ thread.author.get_full_name|default:thread.author.username }}</span>
+      <span>{{ thread.created|date:"d M Y, H:i" }}</span>
+      <span>👁 {{ thread.views }}</span>
+      <span>💬 {{ thread.reply_count }} repl{{ thread.reply_count|pluralize:"y,ies" }}</span>
+      {% if thread.book %}<span>📚 {{ thread.book.title }}</span>{% endif %}
+    </div>
+    <div class="thread-op-body">{{ thread.body }}</div>
+    {% if thread.author == request.user or request.user.can_manage_books %}
+    <div style="margin-top:16px;">
+      <a href="{% url 'social:delete_discussion' thread.pk %}" style="color:rgba(255,255,255,0.4);font-size:12px;" onclick="return confirm('Delete this discussion?')">Delete thread</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Replies -->
+  <div class="section-title" style="margin-bottom:16px;">{{ thread.reply_count }} Repl{{ thread.reply_count|pluralize:"y,ies" }}</div>
+
+  {% for reply in replies %}
+  <div class="reply-card">
+    <div class="reply-avatar">{{ reply.author.first_name.0|default:reply.author.username.0|upper }}</div>
+    <div style="flex:1;min-width:0;">
+      <div class="reply-meta">
+        <strong>{{ reply.author.get_full_name|default:reply.author.username }}</strong>
+        {% if reply.author == thread.author %}<span class="op-badge">OP</span>{% endif %}
+        <span>{{ reply.created|date:"d M Y, H:i" }}</span>
+      </div>
+      <div class="reply-body-text">{{ reply.body }}</div>
+      <div class="reply-footer">
+        <button class="like-btn {% if request.user in reply.likes.all %}liked{% endif %}"
+          onclick="likeReply({{ reply.pk }}, this)">
+          👍 <span class="lc">{{ reply.like_count }}</span>
+        </button>
+        {% if reply.author == request.user or request.user.can_manage_books %}
+          <a href="{% url 'social:delete_reply' reply.pk %}" style="color:var(--danger);font-size:12px;" onclick="return confirm('Delete reply?')">Delete</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:24px;color:var(--ink3);font-size:14px;">No replies yet — be the first to respond!</div>
+  {% endfor %}
+
+  <!-- Reply form -->
+  <div class="card" style="margin-top:24px;">
+    <div class="card-body">
+      <div style="font-weight:600;font-size:14px;margin-bottom:14px;">✍️ Add a Reply</div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group" style="margin-bottom:12px;">
+          <textarea name="body" rows="4" placeholder="Share your thoughts…" maxlength="1000" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-gold">Post Reply</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function likeReply(pk, btn) {
+    const res  = await fetch(`/social/replies/${pk}/like/`, {method:'POST', headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+    const data = await res.json();
+    btn.querySelector('.lc').textContent = data.count;
+    btn.classList.toggle('liked', data.liked);
+  }
+</script>
+{% endblock %}

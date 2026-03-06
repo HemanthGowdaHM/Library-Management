@@ -1,0 +1,49 @@
+
+{% extends 'base.html' %}
+{% block title %}My Reservations{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-title">My Reservations</div>
+  <div class="page-sub">Books you've reserved — you'll be notified when available</div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Book</th><th>Author</th><th>Queue Position</th><th>Status</th><th>Reserved On</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for r in reservations %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px;">
+                {% if r.book.cover %}<img src="{{ r.book.cover }}" style="width:32px;height:44px;object-fit:cover;border-radius:4px;">{% endif %}
+                <span style="font-weight:500;">{{ r.book.title|truncatechars:36 }}</span>
+              </div>
+            </td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.book.author }}</td>
+            <td>
+              <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--gold);">#{{ r.queue_position }}</span>
+            </td>
+            <td>
+              <span class="badge {% if r.status == 'NOTIFIED' %}badge-green{% elif r.status == 'PENDING' %}badge-gold{% else %}badge-gray{% endif %}">
+                {% if r.status == 'NOTIFIED' %}✓ Book Ready!{% else %}{{ r.status }}{% endif %}
+              </span>
+              {% if r.status == 'NOTIFIED' and r.expires_at %}
+                <div style="font-size:11px;color:var(--danger);margin-top:3px;">Expires {{ r.expires_at|date:"d M, H:i" }}</div>
+              {% endif %}
+            </td>
+            <td style="color:var(--ink3);font-size:13px;">{{ r.created_at|date:"d M Y" }}</td>
+            <td>
+              <a href="{% url 'books:cancel_reservation' r.pk %}" class="btn btn-sm" style="background:#fdf0ef;color:var(--danger);border:1.5px solid #f0b8b3;">Cancel</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6"><div class="empty"><div class="empty-icon">🔖</div><p>No active reservations.</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

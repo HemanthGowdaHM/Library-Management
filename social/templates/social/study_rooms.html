@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Study Rooms{% endblock %}
+
+{% block content %}
+<div class="page">
+  <h1>Study Rooms</h1>
+  <p><a href="{% url 'social:create_study_room' %}" class="btn btn-gold">Create Room</a></p>
+
+  <h2>My Rooms</h2>
+  {% if my_rooms %}
+    <ul>
+      {% for room in my_rooms %}
+        <li>
+          <a href="{% url 'social:study_room_detail' room.pk %}">{{ room.name }}</a> — {{ room.member_count }} members
+          {% if room.created_by == request.user %}
+            <form method="post" action="{% url 'social:delete_study_room' room.pk %}" style="display:inline;margin-left:8px;">
+              {% csrf_token %}
+              <button class="btn btn-outline btn-sm" onclick="return confirm('Delete this room?')">Delete</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No rooms yet.</p>
+  {% endif %}
+
+  <h2>Public Rooms</h2>
+  {% if public_rooms %}
+    <ul>
+      {% for room in public_rooms %}
+        <li>
+          <a href="{% url 'social:study_room_detail' room.pk %}">{{ room.name }}</a> — {{ room.member_count }} members
+          {% if room.created_by == request.user %}
+            <form method="post" action="{% url 'social:delete_study_room' room.pk %}" style="display:inline;margin-left:8px;">
+              {% csrf_token %}
+              <button class="btn btn-outline btn-sm" onclick="return confirm('Delete this room?')">Delete</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No public rooms.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

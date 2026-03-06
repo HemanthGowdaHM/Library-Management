@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% block title %}QR Scanner{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+  .scanner-page {
+    min-height: calc(100vh - 62px);
+    background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 20px;
+  }
+  .scanner-card {
+    background: #fff; border-radius: 16px;
+    width: 100%; max-width: 540px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .scanner-header {
+    background: linear-gradient(135deg, var(--navy), var(--navy-deep));
+    padding: 24px 28px;
+  }
+  .scanner-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px; color: #fff; margin-bottom: 4px;
+  }
+  .scanner-header p { font-size: 13px; color: rgba(255,255,255,0.5); }
+
+  /* Mode tabs */
+  .mode-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .mode-tab {
+    flex: 1; padding: 14px; text-align: center;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--ink3); border-bottom: 2px solid transparent;
+    transition: all 0.18s; background: none; border-top:none; border-left:none; border-right:none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .mode-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .mode-panel { display: none; padding: 24px 28px; }
+  .mode-panel.active { display: block; }
+
+  /* Camera view */
+  .camera-wrap {
+    position: relative; border-radius: 10px; overflow: hidden;
+    background: #000; aspect-ratio: 4/3; margin-bottom: 16px;
+  }
+  #scanVideo { width: 100%; height: 100%; object-fit: cover; }
+  .scan-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .scan-frame {
+    width: 200px; height: 120px;
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+    position: relative;
+  }
+  .scan-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    animation: scanLine 2s linear infinite;
+  }
+  @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
+
+  .scan-status {
+    text-align: center; font-size: 13px; color: var(--ink3);
+    padding: 10px; border-radius: 8px; background: var(--paper);
+    margin-bottom: 16px; min-height: 42px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .scan-status.success { background: #edf7f1; color: var(--success); }
+  .scan-status.error   { background: #fdf0ef; color: var(--danger); }
+
+  /* Result card */
+  .result-card {
+    display: none; background: var(--paper);
+    border: 1.5px solid var(--gold); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+    align-items: center; gap: 14px;
+  }
+  .result-card.visible { display: flex; }
+  .result-cover {
+    width: 60px; height: 80px; object-fit: cover;
+    border-radius: 6px; border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .result-cover-ph {
+    width: 60px; height: 80px; background: var(--navy);
+    border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .result-title  { font-family:'Playfair Display',serif; font-size:15px; font-weight:600; }
+  .result-author { font-size:13px; color:var(--ink3); margin-top:2px; margin-bottom:10px; }
+  .result-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Manual ISBN input */
+  .manual-row { display:flex; gap:8px; }
+  .manual-row input { flex:1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="scanner-page">
+  <div class="scanner-card">
+    <div class="scanner-header">
+      <h2>📷 QR / Barcode Scanner</h2>
+      <p>Scan a book's QR code or ISBN barcode to issue, return or view details</p>
+    </div>
+
+    <!-- MODE TABS -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('camera',this)">📷 Camera Scan</button>
+      <button class="mode-tab" onclick="switchMode('manual',this)">⌨ Manual ISBN</button>
+    </div>
+
+    <!-- CAMERA PANEL -->
+    <div class="mode-panel active" id="panel-camera">
+      <div class="camera-wrap">
+        <video id="scanVideo" autoplay playsinline muted></video>
+        <div class="scan-overlay">
+          <div class="scan-frame">
+            <div class="scan-line"></div>
+          </div>
+        </div>
+      </div>
+      <div class="scan-status" id="scanStatus">📸 Initialising camera…</div>
+      <div class="result-card" id="resultCard">
+        <div id="resultCover"></div>
+        <div>
+          <div class="result-title"  id="resultTitle"></div>
+          <div class="result-author" id="resultAuthor"></div>
+          <div class="result-actions" id="resultActions"></div>
+        </div>
+      </div>
+      <button class="btn btn-outline btn-block" id="resetBtn" style="display:none;" onclick="resetScanner()">Scan Another</button>
+    </div>
+
+    <!-- MANUAL PANEL -->
+    <div class="mode-panel" id="panel-manual">
+      <p style="font-size:13.5px;color:var(--ink3);margin-bottom:16px;">Enter an ISBN to look up or find a book in the system.</p>
+      <div class="manual-row">
+        <input type="text" id="manualISBN" placeholder="Enter ISBN (10 or 13 digits)" maxlength="13"
+          onkeydown="if(event.key==='Enter')manualLookup()">
+        <button class="btn btn-gold" onclick="manualLookup()">Look Up</button>
+      </div>
+      <div class="scan-status" id="manualStatus" style="margin-top:14px;display:none;"></div>
+      <div class="result-card" id="manualResultCard" style="margin-top:14px;">
+        <div id="manualCover"></div>
+        <div>
+          <div class="result-title"  id="manualTitle"></div>
+          <div class="result-author" id="manualAuthor"></div>
+          <div class="result-actions" id="manualActions"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let quaggaActive = false;
+  let scanDone     = false;
+
+  // ── INIT CAMERA SCANNER ──────────────────────────────────────────────────
+  function startCamera() {
+    const status = document.getElementById('scanStatus');
+    Quagga.init({
+      inputStream: {
+        name: 'Live', type: 'LiveStream',
+        target: document.getElementById('scanVideo'),
+        constraints: { facingMode: 'environment', width: 640, height: 480 },
+      },
+      decoder: { readers: ['ean_reader','ean_8_reader','code_128_reader'] },
+      locate: true,
+    }, function(err) {
+      if (err) {
+        status.textContent = '⚠️ Camera not available. Use Manual ISBN tab instead.';
+        status.className   = 'scan-status error';
+        return;
+      }
+      Quagga.start();
+      quaggaActive = true;
+      status.textContent = 'Point camera at a QR code or ISBN barcode…';
+      status.className   = 'scan-status';
+    });
+
+    Quagga.onDetected(async function(result) {
+      if (scanDone) return;
+      const code = result.codeResult.code;
+      if (!code || (code.length !== 13 && code.length !== 10)) return;
+      scanDone = true;
+      Quagga.stop(); quaggaActive = false;
+      status.textContent = `✓ Detected: ${code} — looking up…`;
+      status.className   = 'scan-status success';
+      await lookupAndShow(code, 'resultCard','resultCover','resultTitle','resultAuthor','resultActions');
+      document.getElementById('resetBtn').style.display = 'block';
+    });
+  }
+
+  function resetScanner() {
+    scanDone = false;
+    document.getElementById('resultCard').classList.remove('visible');
+    document.getElementById('resetBtn').style.display = 'none';
+    document.getElementById('scanStatus').textContent = 'Point camera at a QR code or ISBN barcode…';
+    document.getElementById('scanStatus').className   = 'scan-status';
+    startCamera();
+  }
+
+  // ── LOOKUP + RENDER RESULT ───────────────────────────────────────────────
+  async function lookupAndShow(isbn, cardId, coverId, titleId, authorId, actionsId) {
+    try {
+      const res  = await fetch(`{% url 'books:isbn_lookup' %}?isbn=${isbn}`);
+      const data = await res.json();
+
+      // Check if book exists in library
+      const libRes  = await fetch(`/books/ajax/search-books/?q=${encodeURIComponent(data.title || isbn)}`);
+      const libData = await libRes.json();
+      const libBook = libData.results && libData.results[0];
+
+      // Cover
+      const coverEl = document.getElementById(coverId);
+      if (data.cover) {
+        coverEl.innerHTML = `<img src="${data.cover}" class="result-cover" alt="cover">`;
+      } else {
+        coverEl.innerHTML = `<div class="result-cover-ph">📖</div>`;
+      }
+
+      document.getElementById(titleId).textContent  = data.title  || 'Unknown Title';
+      document.getElementById(authorId).textContent = data.author || '';
+
+      // Actions
+      const actions = document.getElementById(actionsId);
+      if (libBook) {
+        actions.innerHTML = `
+          <a href="/books/${libBook.id}/" class="btn btn-outline btn-sm">View Book</a>
+          <a href="/accounts/issue/" class="btn btn-gold btn-sm">Issue</a>
+        `;
+      } else {
+        actions.innerHTML = `
+          <a href="/books/add/?isbn=${isbn}" class="btn btn-gold btn-sm">+ Add to Library</a>
+        `;
+      }
+
+      document.getElementById(cardId).classList.add('visible');
+    } catch(e) {
+      document.getElementById('scanStatus').textContent = 'Lookup failed. Try Manual ISBN.';
+      document.getElementById('scanStatus').className  = 'scan-status error';
+    }
+  }
+
+  // ── MANUAL LOOKUP ────────────────────────────────────────────────────────
+  async function manualLookup() {
+    const isbn  = document.getElementById('manualISBN').value.trim();
+    const st    = document.getElementById('manualStatus');
+    st.textContent = '⌛ Looking up…';
+    st.style.display = 'flex';
+    st.className = 'scan-status';
+    document.getElementById('manualResultCard').classList.remove('visible');
+    await lookupAndShow(isbn,'manualResultCard','manualCover','manualTitle','manualAuthor','manualActions');
+    st.style.display = 'none';
+  }
+
+  // ── MODE SWITCH ──────────────────────────────────────────────────────────
+  function switchMode(mode, el) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + mode).classList.add('active');
+    if (mode === 'camera' && !quaggaActive && !scanDone) startCamera();
+    if (mode === 'manual' && quaggaActive) { Quagga.stop(); quaggaActive = false; }
+  }
+
+  // Auto-start camera
+  startCamera();
+</script>
+{% endblock %}

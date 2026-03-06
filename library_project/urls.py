@@ -21,17 +21,19 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
 
-from django.conf.urls import handler403, handler404, handler500
-
-
-urlpatterns = [
-    path('admin/',      admin.site.urls),
-    path('books/',      include('books.urls')),
-    path('accounts/',   include('accounts.urls', namespace='accounts')),  # ← ADD THIS
-    path('',            lambda request: redirect('accounts:dashboard')),   # ← root redirect
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)        # ← ADD THIS
-
-
 handler403 = 'accounts.views.error_403'
 handler404 = 'accounts.views.error_404'
 handler500 = 'accounts.views.error_500'
+
+urlpatterns = [
+    path('admin/',    admin.site.urls),
+    path('books/',    include('books.urls',    namespace='books')),
+    path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('social/',   include('social.urls',   namespace='social')),  # ← add
+
+    path('',          lambda request: redirect('accounts:dashboard')),
+]
+
+# ✅ THIS LINE serves /media/ files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

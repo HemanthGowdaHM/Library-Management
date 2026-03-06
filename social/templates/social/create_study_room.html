@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Create Study Room{% endblock %}
+{% block content %}
+<div class="page" style="max-width:560px;">
+  <a href="{% url 'social:study_rooms' %}" class="btn btn-outline btn-sm" style="margin-bottom:20px;">← Study Rooms</a>
+  <div class="page-title">Create a Study Room</div>
+  <div class="page-sub">Set up a collaborative space for a group to share notes about a book</div>
+  <div class="card" style="margin-top:20px;">
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Room Name <span style="color:var(--gold);">*</span></label>
+          <input type="text" name="name" placeholder="e.g. DBMS Study Group — Sem 4" maxlength="120" required>
+        </div>
+        <div class="form-group">
+          <label>Description <span style="color:var(--ink3);font-weight:400;">optional</span></label>
+          <textarea name="description" rows="3" placeholder="What will this room focus on?" maxlength="500"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Linked Book <span style="color:var(--ink3);font-weight:400;">optional</span></label>
+          <select name="book_id" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+            <option value="">— No specific book —</option>
+            {% for book in books %}
+            <option value="{{ book.pk }}">{{ book.title }} — {{ book.author }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+            <input type="checkbox" name="is_private" style="width:16px;height:16px;accent-color:var(--gold);">
+            Make this room private (invite only)
+          </label>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" class="btn btn-gold">Create Room</button>
+          <a href="{% url 'social:study_rooms' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

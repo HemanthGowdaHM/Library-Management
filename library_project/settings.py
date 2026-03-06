@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-s^@57=1dd4&&-=p795=t)t0mogb&bt36n=2f!mxfldnhke(el-'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True 
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'books',
     'accounts',
+    'social',
 ]
 
 MIDDLEWARE = [
@@ -130,5 +131,8 @@ LOGIN_REDIRECT_URL = '/accounts/dashboard/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # 4. Media files (for profile pictures)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL  = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media' 
+
+
+SITE_URL = 'http://127.0.0.1:8000'   # Change to your real domain in production
